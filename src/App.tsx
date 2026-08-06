@@ -89,6 +89,7 @@ export default function App() {
         <TimelineView
           days={data.days}
           members={data.members}
+          mutations={mutations}
           onOpenDay={setOpenDayId}
           onAddDay={() => void addDay()}
           onShift={() => setShiftOpen(true)}

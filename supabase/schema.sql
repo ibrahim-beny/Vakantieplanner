@@ -40,6 +40,9 @@ create table trip_days (
   lng double precision,
   day_type text not null check (day_type in ('chill', 'licht', 'gemiddeld', 'zwaar', 'vertrek')),
   overnight_location text,
+  accommodation_booked boolean not null default false,
+  accommodation_booked_by uuid references profiles(id),
+  accommodation_paid_back boolean not null default false,
   activities text[], -- losse activiteiten, in de UI als tags toe te voegen/verwijderen
   drive_distance_km numeric,
   drive_time_hours numeric, -- in uren (bijv. 3.5, 8.5), matcht "Rijtijd (u)" 1-op-1

@@ -10,6 +10,8 @@ import {
 } from 'date-fns'
 import { DAY_TYPES } from '../../lib/dayTypes'
 import { formatFull, formatMonthTitle, parseLocalISO, toLocalISO } from '../../lib/dates'
+import { BOOKING_BADGES, bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
+import { getStoredProfileId } from '../../lib/identity'
 import type { ClipboardDay, TripDay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { QuickAddModal } from './QuickAddModal'
@@ -96,6 +98,10 @@ export function CalendarView({
     }
   }, [contextMenu])
 
+  function cycleBooking(day: TripDay) {
+    void mutations.updateDay(day.id, nextBookingPatch(day, getStoredProfileId()))
+  }
+
   async function handleMove(dayId: string, targetDate: string) {
     const source = days.find((d) => d.id === dayId)
     if (!source || source.date === targetDate) return
@@ -154,6 +160,7 @@ export function CalendarView({
           const inMonth = isSameMonth(date, monthCursor)
           const day = dayByDate.get(iso)
           const dt = day ? DAY_TYPES[day.day_type] : null
+          const badge = day ? bookingBadge(day) : null
           const isSelected = selectedDate === iso
           const isDragOver = dragOverDate === iso
 
@@ -174,10 +181,13 @@ export function CalendarView({
             <button
               type="button"
               key={iso}
-              aria-label={`${formatFull(iso)}${day ? ` — ${day.location_name}` : ' — leeg'}`}
+              aria-label={`${formatFull(iso)}${day ? ` — ${day.location_name}` : ' — leeg'}${
+                badge ? ` — ${badge.label}` : ''
+              }`}
               className="block overflow-hidden p-2 text-left align-top"
               style={{
                 height: CELL_HEIGHT,
+                position: 'relative',
                 background: dt ? dt.bg : 'var(--color-card)',
                 color: dt ? dt.fg : 'var(--color-ink)',
                 border: dt
@@ -224,6 +234,39 @@ export function CalendarView({
             >
               <span className="font-mono text-[12px] opacity-75">{date.getDate()}</span>
               {day && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label={
+                    badge ? `${badge.label} — klik om te wijzigen` : 'Nog niet geboekt — klik om te boeken'
+                  }
+                  className="absolute flex items-center justify-center font-mono text-[10px] font-bold"
+                  style={{
+                    top: 6,
+                    right: 6,
+                    height: 16,
+                    width: 16,
+                    background: badge ? badge.bg : 'transparent',
+                    color: badge ? badge.fg : 'var(--color-muted)',
+                    border: badge ? '1.5px solid var(--color-card)' : '1.5px solid var(--color-muted)',
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    cycleBooking(day)
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      cycleBooking(day)
+                    }
+                  }}
+                >
+                  {badge ? badge.glyph : ''}
+                </span>
+              )}
+              {day && (
                 <span className="block">
                   <span className="block truncate text-[12.5px] font-bold leading-snug">
                     {day.location_name}
@@ -258,6 +301,24 @@ export function CalendarView({
             {dt.label}
           </p>
         ))}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+        {BOOKING_BADGES.map((b) => (
+          <p
+            key={b.status}
+            className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.06em] text-muted"
+          >
+            <span
+              className="flex h-[15px] w-[15px] items-center justify-center text-[10px] font-bold"
+              style={{ background: b.bg, color: b.fg }}
+            >
+              {b.glyph}
+            </span>
+            {b.label}
+          </p>
+        ))}
+        <p className="font-mono text-[11px] italic text-muted">(geen vinkje = nog niet geboekt)</p>
       </div>
 
       {contextMenu && (

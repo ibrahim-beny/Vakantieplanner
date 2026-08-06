@@ -30,6 +30,9 @@ export interface TripDay {
   lng: number | null
   day_type: DayType
   overnight_location: string | null
+  accommodation_booked: boolean
+  accommodation_booked_by: string | null
+  accommodation_paid_back: boolean
   activities: string[]
   drive_distance_km: number | null
   drive_time_hours: number | null

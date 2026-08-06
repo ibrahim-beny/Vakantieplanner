@@ -1,24 +1,33 @@
 import { DAY_TYPES } from '../../lib/dayTypes'
 import { formatDayMonth } from '../../lib/dates'
+import { bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
+import { getStoredProfileId } from '../../lib/identity'
 import type { Profile, TripDay } from '../../lib/types'
+import type { TripMutations } from '../../hooks/useTripData'
 import { ProgressLine } from './ProgressLine'
 
 /** Lineaire dag-voor-dag lijst — de primaire weergave op mobiel. */
 export function TimelineView({
   days,
   members,
+  mutations,
   onOpenDay,
   onAddDay,
   onShift,
 }: {
   days: TripDay[]
   members: Profile[]
+  mutations: TripMutations
   onOpenDay: (id: string) => void
   onAddDay: () => void
   onShift: () => void
 }) {
   const memberName = (id: string | null) =>
     members.find((m) => m.id === id)?.display_name ?? 'onbekend'
+
+  function cycleBooking(day: TripDay) {
+    void mutations.updateDay(day.id, nextBookingPatch(day, getStoredProfileId()))
+  }
 
   return (
     <section className="mx-auto w-full max-w-[960px]" style={{ padding: 'clamp(16px, 4vw, 36px)' }}>
@@ -36,6 +45,7 @@ export function TimelineView({
       <div className="flex flex-col gap-3">
         {days.map((day) => {
           const dt = DAY_TYPES[day.day_type]
+          const badge = bookingBadge(day)
           const { day: dayNr, month } = formatDayMonth(day.date)
           const hasDrive = (day.drive_time_hours ?? 0) > 0 || (day.drive_distance_km ?? 0) > 0
           return (
@@ -64,6 +74,37 @@ export function TimelineView({
                     style={{ background: dt.bg, color: dt.fg }}
                   >
                     {dt.label}
+                  </span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={
+                      badge
+                        ? `${badge.label} — klik om te wijzigen`
+                        : 'Nog niet geboekt — klik om te boeken'
+                    }
+                    className="flex h-[18px] w-[18px] items-center justify-center font-mono text-[10.5px] font-bold"
+                    style={{
+                      background: badge ? badge.bg : 'transparent',
+                      color: badge ? badge.fg : 'var(--color-muted)',
+                      border: badge
+                        ? '1.5px solid var(--color-card)'
+                        : '1.5px solid var(--color-edge)',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      cycleBooking(day)
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        cycleBooking(day)
+                      }
+                    }}
+                  >
+                    {badge ? badge.glyph : ''}
                   </span>
                 </span>
                 {day.overnight_location && (

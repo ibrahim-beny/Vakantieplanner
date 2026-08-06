@@ -236,6 +236,79 @@ export function DayDetailPanel({
           </div>
 
           <div>
+            <label className="flex cursor-pointer items-center gap-2.5">
+              <input
+                type="checkbox"
+                className="accent-(--color-canyon)"
+                checked={day.accommodation_booked}
+                onChange={(e) => {
+                  const checked = e.target.checked
+                  void mutations.updateDay(
+                    day.id,
+                    checked
+                      ? { accommodation_booked: true }
+                      : {
+                          accommodation_booked: false,
+                          accommodation_booked_by: null,
+                          accommodation_paid_back: false,
+                        },
+                  )
+                }}
+              />
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                Slaapplek geboekt
+              </span>
+            </label>
+
+            {day.accommodation_booked && (
+              <div className="mt-3 flex flex-col gap-3 border-l-[1.5px] border-edge pl-3">
+                <div>
+                  <label htmlFor="day-booked-by" className="field-label">
+                    Geboekt door
+                  </label>
+                  <select
+                    id="day-booked-by"
+                    className="field-input"
+                    value={day.accommodation_booked_by ?? ''}
+                    onChange={(e) =>
+                      void mutations.updateDay(day.id, {
+                        accommodation_booked_by: e.target.value || null,
+                        ...(e.target.value ? {} : { accommodation_paid_back: false }),
+                      })
+                    }
+                  >
+                    <option value="">Kies wie...</option>
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.display_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <label
+                  className={`flex items-center gap-2.5 ${
+                    day.accommodation_booked_by ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-(--color-sage)"
+                    checked={day.accommodation_paid_back}
+                    disabled={!day.accommodation_booked_by}
+                    onChange={(e) =>
+                      void mutations.updateDay(day.id, { accommodation_paid_back: e.target.checked })
+                    }
+                  />
+                  <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                    Terugbetaald (Tikkie ontvangen)
+                  </span>
+                </label>
+              </div>
+            )}
+          </div>
+
+          <div>
             <span className="field-label">Activiteiten</span>
             <ActivityTagInput
               value={draft.activities}
