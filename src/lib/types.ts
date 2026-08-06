@@ -30,6 +30,8 @@ export interface TripDay {
   lng: number | null
   day_type: DayType
   overnight_location: string | null
+  overnight_lat: number | null
+  overnight_lng: number | null
   accommodation_booked: boolean
   accommodation_booked_by: string | null
   accommodation_paid_back: boolean
@@ -60,6 +62,8 @@ export interface ClipboardDay {
   lng: number | null
   day_type: DayType
   overnight_location: string | null
+  overnight_lat: number | null
+  overnight_lng: number | null
   activities: string[]
   drive_distance_km: number | null
   drive_time_hours: number | null

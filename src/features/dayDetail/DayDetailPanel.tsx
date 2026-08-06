@@ -5,12 +5,15 @@ import type { DayType, Profile, TripDay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { ActivityTagInput } from './ActivityTagInput'
 import { CommentThread } from './CommentThread'
+import { PlaceSearchInput } from './PlaceSearchInput'
 
 interface Draft {
   location_name: string
   lat: string
   lng: string
   overnight_location: string
+  overnight_lat: string
+  overnight_lng: string
   activities: string[]
   drive_time_hours: string
   drive_distance_km: string
@@ -23,6 +26,8 @@ function toDraft(day: TripDay): Draft {
     lat: day.lat?.toString() ?? '',
     lng: day.lng?.toString() ?? '',
     overnight_location: day.overnight_location ?? '',
+    overnight_lat: day.overnight_lat?.toString() ?? '',
+    overnight_lng: day.overnight_lng?.toString() ?? '',
     activities: [...day.activities],
     drive_time_hours: day.drive_time_hours?.toString() ?? '',
     drive_distance_km: day.drive_distance_km?.toString() ?? '',
@@ -93,6 +98,8 @@ export function DayDetailPanel({
       lat: toNumber(draft.lat),
       lng: toNumber(draft.lng),
       overnight_location: draft.overnight_location.trim() || null,
+      overnight_lat: toNumber(draft.overnight_lat),
+      overnight_lng: toNumber(draft.overnight_lng),
       drive_time_hours: toNumber(draft.drive_time_hours),
       drive_distance_km: toNumber(draft.drive_distance_km),
       notes: draft.notes.trim() || null,
@@ -102,10 +109,31 @@ export function DayDetailPanel({
       patch.lat !== day.lat ||
       patch.lng !== day.lng ||
       patch.overnight_location !== day.overnight_location ||
+      patch.overnight_lat !== day.overnight_lat ||
+      patch.overnight_lng !== day.overnight_lng ||
       patch.drive_time_hours !== day.drive_time_hours ||
       patch.drive_distance_km !== day.drive_distance_km ||
       patch.notes !== day.notes
     if (changed) void mutations.updateDay(day.id, patch)
+  }
+
+  /** Vrij typen maakt de vorige, geverifieerde Nominatim-coördinaat ongeldig. */
+  function changeOvernightText(text: string) {
+    set({ overnight_location: text, overnight_lat: '', overnight_lng: '' })
+  }
+
+  function pickOvernightPlace(place: { label: string; lat: number; lng: number }) {
+    const next = {
+      overnight_location: place.label,
+      overnight_lat: place.lat.toString(),
+      overnight_lng: place.lng.toString(),
+    }
+    set(next)
+    void mutations.updateDay(day.id, {
+      overnight_location: place.label,
+      overnight_lat: place.lat,
+      overnight_lng: place.lng,
+    })
   }
 
   function changeDate(newDate: string) {
@@ -226,12 +254,12 @@ export function DayDetailPanel({
             <label htmlFor="day-overnight" className="field-label">
               Overnachting
             </label>
-            <input
+            <PlaceSearchInput
               id="day-overnight"
-              className="field-input"
               value={draft.overnight_location}
-              onChange={(e) => set({ overnight_location: e.target.value })}
+              onChange={changeOvernightText}
               onBlur={commitText}
+              onPlaceSelected={pickOvernightPlace}
             />
           </div>
 

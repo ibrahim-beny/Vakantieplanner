@@ -56,7 +56,11 @@ export function PasteModal({
       patch.lng = clipboard.lng
     }
     if (checked.dagtype) patch.day_type = clipboard.day_type
-    if (checked.overnachting) patch.overnight_location = clipboard.overnight_location
+    if (checked.overnachting) {
+      patch.overnight_location = clipboard.overnight_location
+      patch.overnight_lat = clipboard.overnight_lat
+      patch.overnight_lng = clipboard.overnight_lng
+    }
     if (checked.activiteiten) patch.activities = [...clipboard.activities]
     if (checked.rijinfo) {
       patch.drive_distance_km = clipboard.drive_distance_km

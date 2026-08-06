@@ -40,6 +40,8 @@ create table trip_days (
   lng double precision,
   day_type text not null check (day_type in ('chill', 'licht', 'gemiddeld', 'zwaar', 'vertrek')),
   overnight_location text,
+  overnight_lat double precision,
+  overnight_lng double precision,
   accommodation_booked boolean not null default false,
   accommodation_booked_by uuid references profiles(id),
   accommodation_paid_back boolean not null default false,

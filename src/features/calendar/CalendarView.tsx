@@ -27,6 +27,8 @@ function toClipboard(day: TripDay): ClipboardDay {
     lng: day.lng,
     day_type: day.day_type,
     overnight_location: day.overnight_location,
+    overnight_lat: day.overnight_lat,
+    overnight_lng: day.overnight_lng,
     activities: [...day.activities],
     drive_distance_km: day.drive_distance_km,
     drive_time_hours: day.drive_time_hours,
