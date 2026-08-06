@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DAY_TYPES, DAY_TYPE_KEYS } from '../../lib/dayTypes'
+import { bookingBadge } from '../../lib/bookingBadge'
 import type { DayType, Profile, TripDay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { ActivityTagInput } from './ActivityTagInput'
@@ -13,6 +14,7 @@ interface Draft {
   overnight_location: string
   overnight_lat: string
   overnight_lng: string
+  accommodation_cost: string
   activities: string[]
   drive_time_hours: string
   drive_distance_km: string
@@ -27,6 +29,7 @@ function toDraft(day: TripDay): Draft {
     overnight_location: day.overnight_location ?? '',
     overnight_lat: day.overnight_lat?.toString() ?? '',
     overnight_lng: day.overnight_lng?.toString() ?? '',
+    accommodation_cost: day.accommodation_cost?.toString() ?? '',
     activities: [...day.activities],
     drive_time_hours: day.drive_time_hours?.toString() ?? '',
     drive_distance_km: day.drive_distance_km?.toString() ?? '',
@@ -97,6 +100,7 @@ export function DayDetailPanel({
       overnight_location: draft.overnight_location.trim() || null,
       overnight_lat: toNumber(draft.overnight_lat),
       overnight_lng: toNumber(draft.overnight_lng),
+      accommodation_cost: toNumber(draft.accommodation_cost),
       drive_time_hours: toNumber(draft.drive_time_hours),
       drive_distance_km: toNumber(draft.drive_distance_km),
       notes: draft.notes.trim() || null,
@@ -108,6 +112,7 @@ export function DayDetailPanel({
       patch.overnight_location !== day.overnight_location ||
       patch.overnight_lat !== day.overnight_lat ||
       patch.overnight_lng !== day.overnight_lng ||
+      patch.accommodation_cost !== day.accommodation_cost ||
       patch.drive_time_hours !== day.drive_time_hours ||
       patch.drive_distance_km !== day.drive_distance_km ||
       patch.notes !== day.notes
@@ -153,6 +158,7 @@ export function DayDetailPanel({
   }
 
   const editorName = members.find((m) => m.id === day.updated_by)?.display_name
+  const bookingBadgeDef = bookingBadge(day)
 
   return (
     <div className="fixed inset-0 z-40">
@@ -240,6 +246,20 @@ export function DayDetailPanel({
           </div>
 
           <div>
+            <label htmlFor="day-cost" className="field-label">
+              Kosten (€)
+            </label>
+            <input
+              id="day-cost"
+              inputMode="decimal"
+              className="field-input font-mono text-[14px]"
+              value={draft.accommodation_cost}
+              onChange={(e) => set({ accommodation_cost: e.target.value })}
+              onBlur={commitText}
+            />
+          </div>
+
+          <div>
             <label className="flex cursor-pointer items-center gap-2.5">
               <input
                 type="checkbox"
@@ -262,6 +282,14 @@ export function DayDetailPanel({
               <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
                 Slaapplek geboekt
               </span>
+              {bookingBadgeDef && (
+                <span
+                  className="px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.05em]"
+                  style={{ background: bookingBadgeDef.bg, color: bookingBadgeDef.fg }}
+                >
+                  {bookingBadgeDef.glyph} {bookingBadgeDef.label}
+                </span>
+              )}
             </label>
 
             {day.accommodation_booked && (

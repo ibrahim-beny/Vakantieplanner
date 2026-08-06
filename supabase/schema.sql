@@ -45,6 +45,7 @@ create table trip_days (
   accommodation_booked boolean not null default false,
   accommodation_booked_by uuid references profiles(id),
   accommodation_paid_back boolean not null default false,
+  accommodation_cost numeric,
   activities text[], -- losse activiteiten, in de UI als tags toe te voegen/verwijderen
   drive_distance_km numeric,
   drive_time_hours numeric, -- in uren (bijv. 3.5, 8.5), matcht "Rijtijd (u)" 1-op-1

@@ -5,6 +5,7 @@ import { Header, SummaryBar, type View } from './components/Header'
 import { CalendarView } from './features/calendar/CalendarView'
 import { TimelineView } from './features/timeline/TimelineView'
 import { MapView } from './features/map/MapView'
+import { BudgetView } from './features/budget/BudgetView'
 import { DayDetailPanel } from './features/dayDetail/DayDetailPanel'
 import { ShiftDaysModal } from './features/shift/ShiftDaysModal'
 import { useTripData } from './hooks/useTripData'
@@ -96,6 +97,14 @@ export default function App() {
         />
       )}
       {view === 'kaart' && <MapView days={data.days} onOpenDay={setOpenDayId} />}
+      {view === 'budget' && (
+        <BudgetView
+          days={data.days}
+          members={data.members}
+          mutations={mutations}
+          onOpenDay={setOpenDayId}
+        />
+      )}
 
       {openDay && (
         <DayDetailPanel
