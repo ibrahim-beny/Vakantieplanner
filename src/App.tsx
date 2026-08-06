@@ -100,7 +100,6 @@ export default function App() {
       {openDay && (
         <DayDetailPanel
           day={openDay}
-          days={data.days}
           members={data.members}
           mutations={mutations}
           onClose={() => setOpenDayId(null)}

@@ -19,7 +19,7 @@ Zonder Supabase-project kun je de UI alvast bekijken met de in-memory dev-mock: 
 Geen accounts, geen auth-configuratie — gewoon een database.
 
 1. **Project aanmaken** op [supabase.com](https://supabase.com) (gratis tier volstaat).
-2. **Schema draaien**: open de SQL-editor in het dashboard en voer [supabase/schema.sql](supabase/schema.sql) uit (tabellen, geen Row Level Security — de planner is bewust volledig open).
+2. **Schema draaien**: open de SQL-editor in het dashboard en voer [supabase/schema.sql](supabase/schema.sql) uit (tabellen, geen Row Level Security — de planner is bewust volledig open — en Realtime aan voor `trip_days`/`trip_day_comments` zodat wijzigingen live binnenkomen bij iedereen die de app open heeft).
 3. **Seed draaien**: voer [supabase/seed.sql](supabase/seed.sql) uit in de SQL-editor. Dit zet de profielen (Ibrahim + Zaid), de trip (1–19 september 2026), alle 19 dagen en de eerste reacties klaar.
 4. **Env-variabelen**: kopieer uit Settings → API de *Project URL* en *anon/public key* naar `.env`:
 
@@ -40,7 +40,7 @@ Er is geen server nodig: de statische build praat rechtstreeks met Supabase.
 
 ## Hoe het werkt
 
-- **Sync**: bewust simpel — elke wijziging wordt direct opgeslagen en daarna wordt alles opnieuw opgehaald (geen realtime/websockets). Ververs de pagina om wijzigingen van de ander te zien.
+- **Sync**: elke wijziging wordt direct opgeslagen en daarna wordt alles opnieuw opgehaald. Daarnaast houdt elke open sessie via Supabase Realtime (websockets) een verbinding open op `trip_days`/`trip_day_comments`: wijzigingen van de ander komen automatisch binnen, geen refresh nodig.
 - **Datums**: dagen hangen aan echte datums (`trip_days.date`, uniek per trip), niet aan dag-nummers. Verschuiven kan per dag (slepen in de kalender, datumveld in het detailpaneel) of als reeks ("Dagen verschuiven" in de tijdlijn).
 - **Kalender-interacties**: klik = selecteren/openen · dubbelklik op een leeg vakje = snel inplannen · rechtsklik = kopiëren/plakken (met per-veld selectie) · ⌘C/⌘V werkt ook · slepen = verplaatsen. Overschrijven vraagt altijd eerst om bevestiging.
 - **Wie ben jij**: geen login — bij het openen kies je uit de ledenlijst wie je bent (opgeslagen in `localStorage` van je eigen browser). Elke wijziging stampt `updated_by`; de tijdlijn en het detailpaneel tonen "Laatst bewerkt door …". Klik op je eigen avatar om te wisselen van profiel.

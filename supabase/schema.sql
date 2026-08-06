@@ -83,3 +83,9 @@ create trigger trip_days_updated_at
 -- public-schema) volledige toegang aan de anon-rol zolang er geen RLS
 -- actief is, dus dat is voldoende.
 -- ============================================================
+
+-- ============================================================
+-- Realtime: laat de app wijzigingen van andere gebruikers direct
+-- binnenkrijgen (via websockets), zonder dat iemand hoeft te verversen.
+-- ============================================================
+alter publication supabase_realtime add table trip_days, trip_day_comments;

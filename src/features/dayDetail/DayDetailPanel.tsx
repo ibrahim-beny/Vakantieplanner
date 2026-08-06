@@ -46,13 +46,11 @@ const toNumber = (s: string): number | null => {
  */
 export function DayDetailPanel({
   day,
-  days,
   members,
   mutations,
   onClose,
 }: {
   day: TripDay
-  days: TripDay[]
   members: Profile[]
   mutations: TripMutations
   onClose: () => void

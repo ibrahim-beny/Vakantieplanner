@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import type { DayPatch, TripData } from '../lib/types'
 
+/** Zelfde mock-opt-in als src/api/index.ts: geen Supabase-client laden zonder project. */
+const useMock = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === '1'
+
 export interface TripMutations {
   createDay(fields: { date: string } & DayPatch): Promise<string | null>
   updateDay(dayId: string, patch: DayPatch): Promise<void>
@@ -35,6 +38,46 @@ export function useTripData() {
     void refetch()
   }, [refetch])
 
+  const tripId = data?.trip.id
+
+  // Realtime: haal opnieuw op zodra de ander (of jijzelf, via een ander
+  // tabblad) trip_days/trip_day_comments wijzigt — geen refresh meer nodig.
+  useEffect(() => {
+    if (!tripId || useMock) return
+
+    let cancelled = false
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    const debouncedRefetch = () => {
+      if (timeoutId) clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => void refetch(), 300)
+    }
+
+    let unsubscribe: (() => void) | undefined
+    void import('../lib/supabase').then(({ supabase }) => {
+      if (cancelled) return
+      const channel = supabase
+        .channel(`trip-${tripId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'trip_days', filter: `trip_id=eq.${tripId}` },
+          debouncedRefetch,
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'trip_day_comments' },
+          debouncedRefetch,
+        )
+        .subscribe()
+      unsubscribe = () => void supabase.removeChannel(channel)
+    })
+
+    return () => {
+      cancelled = true
+      if (timeoutId) clearTimeout(timeoutId)
+      unsubscribe?.()
+    }
+  }, [tripId, refetch])
+
   const run = useCallback(
     async (fn: () => Promise<void>) => {
       try {
@@ -48,8 +91,6 @@ export function useTripData() {
     },
     [refetch],
   )
-
-  const tripId = data?.trip.id
 
   const mutations: TripMutations = {
     createDay: async (fields) => {
