@@ -1,23 +1,13 @@
 import { supabase } from '../lib/supabase'
 import { addDaysISO } from '../lib/dates'
+import { getStoredProfileId } from '../lib/identity'
 import type { TripApi } from './tripApi'
 import type { DayComment, DayPatch, Profile, TripDay, TripData } from '../lib/types'
 
-async function requireUid(): Promise<string> {
-  const { data } = await supabase.auth.getSession()
-  const uid = data.session?.user.id
-  if (!uid) throw new Error('Niet ingelogd.')
-  return uid
-}
-
-async function fetchProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, display_name, color')
-    .eq('id', userId)
-    .maybeSingle()
-  if (error) throw new Error(error.message)
-  return data
+function requireIdentity(): string {
+  const id = getStoredProfileId()
+  if (!id) throw new Error('Nog geen profiel gekozen.')
+  return id
 }
 
 /** Houd trips.start_date/end_date gelijk aan de werkelijke dag-range. */
@@ -35,46 +25,13 @@ async function syncTripRange(tripId: string): Promise<void> {
     .eq('id', tripId)
 }
 
-async function stamped(patch: DayPatch): Promise<DayPatch & { updated_by: string }> {
-  return { ...patch, updated_by: await requireUid() }
+function stamped(patch: DayPatch): DayPatch & { updated_by: string } {
+  return { ...patch, updated_by: requireIdentity() }
 }
 
 export const supabaseApi: TripApi = {
-  async getProfile() {
-    const { data } = await supabase.auth.getSession()
-    if (!data.session) return null
-    return fetchProfile(data.session.user.id)
-  },
-
-  onAuthChange(cb) {
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        cb(null)
-        return
-      }
-      // Niet awaiten in de callback zelf (Supabase-advies): profiel apart ophalen.
-      void fetchProfile(session.user.id).then(cb)
-    })
-    return () => data.subscription.unsubscribe()
-  },
-
-  async signInWithMagicLink(email) {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false, // geen publieke registratie
-        emailRedirectTo: window.location.origin,
-      },
-    })
-    if (error) throw new Error(error.message)
-  },
-
-  async signOut() {
-    await supabase.auth.signOut()
-  },
-
   async fetchTripData(): Promise<TripData | null> {
-    // RLS beperkt tot trips waar de gebruiker lid van is; pak de eerste.
+    // Geen accounts: er is precies 1 trip, gewoon de eerste pakken.
     const { data: trips, error: tripsError } = await supabase
       .from('trips')
       .select('id, name, start_date, end_date')
@@ -121,7 +78,7 @@ export const supabaseApi: TripApi = {
   },
 
   async createDay(tripId, fields) {
-    const uid = await requireUid()
+    const uid = requireIdentity()
     const { data, error } = await supabase
       .from('trip_days')
       .insert({
@@ -142,7 +99,7 @@ export const supabaseApi: TripApi = {
   async updateDay(dayId, patch) {
     const { error } = await supabase
       .from('trip_days')
-      .update(await stamped(patch))
+      .update(stamped(patch))
       .eq('id', dayId)
     if (error) throw new Error(error.message)
   },
@@ -166,7 +123,7 @@ export const supabaseApi: TripApi = {
 
     const { error } = await supabase
       .from('trip_days')
-      .update({ date: newDate, updated_by: await requireUid() })
+      .update({ date: newDate, updated_by: requireIdentity() })
       .eq('id', dayId)
     if (error) throw new Error(error.message)
     await syncTripRange(day.trip_id)
@@ -185,7 +142,7 @@ export const supabaseApi: TripApi = {
 
   async shiftDays(tripId, fromDate, deltaDays) {
     if (deltaDays === 0) return
-    const uid = await requireUid()
+    const uid = requireIdentity()
     const { data: days, error } = await supabase
       .from('trip_days')
       .select('id, date')
@@ -207,7 +164,7 @@ export const supabaseApi: TripApi = {
   },
 
   async addComment(dayId, body) {
-    const uid = await requireUid()
+    const uid = requireIdentity()
     const { error } = await supabase
       .from('trip_day_comments')
       .insert({ trip_day_id: dayId, author_id: uid, body })

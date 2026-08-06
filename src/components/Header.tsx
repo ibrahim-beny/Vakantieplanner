@@ -1,4 +1,4 @@
-import { api } from '../api'
+import { clearStoredProfileId } from '../lib/identity'
 import { formatRange } from '../lib/dates'
 import type { Profile, TripData } from '../lib/types'
 
@@ -64,12 +64,12 @@ export function Header({
             <button
               key={member.id}
               type="button"
-              title={isCurrent ? `${member.display_name} (jij) — klik om uit te loggen` : member.display_name}
+              title={isCurrent ? `${member.display_name} (jij) — klik om te wisselen` : member.display_name}
               aria-label={
-                isCurrent ? `${member.display_name} (jij) — uitloggen` : member.display_name
+                isCurrent ? `${member.display_name} (jij) — wisselen` : member.display_name
               }
               onClick={() => {
-                if (isCurrent && window.confirm('Uitloggen?')) void api.signOut()
+                if (isCurrent && window.confirm('Wie je bent, wisselen?')) clearStoredProfileId()
               }}
               className="flex h-9 w-9 items-center justify-center rounded-full font-display text-[15px] font-bold text-card"
               style={{

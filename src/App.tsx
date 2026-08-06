@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api } from './api'
-import { useAuth } from './features/auth/AuthProvider'
-import { LoginScreen } from './features/auth/LoginScreen'
+import { useIdentity } from './features/identity/useIdentity'
+import { WhoAmIScreen } from './features/identity/WhoAmIScreen'
 import { Header, SummaryBar, type View } from './components/Header'
 import { CalendarView } from './features/calendar/CalendarView'
 import { TimelineView } from './features/timeline/TimelineView'
@@ -20,8 +19,8 @@ function CenteredMessage({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { profile, loading: authLoading } = useAuth()
-  const { data, loading, error, mutations } = useTripData(profile)
+  const profileId = useIdentity()
+  const { data, loading, error, mutations } = useTripData()
   // Tijdlijn is de primaire weergave op mobiel; kalender op desktop.
   const [view, setView] = useState<View>(() =>
     window.matchMedia('(max-width: 767px)').matches ? 'tijdlijn' : 'kalender',
@@ -35,23 +34,24 @@ export default function App() {
   }, [])
   const [shiftOpen, setShiftOpen] = useState(false)
 
-  if (authLoading) return <CenteredMessage>Laden…</CenteredMessage>
-  if (!profile) return <LoginScreen />
   if (loading && !data) return <CenteredMessage>Trip laden…</CenteredMessage>
   if (!data) {
     return (
       <CenteredMessage>
-        {error ? `Er ging iets mis: ${error}` : 'Geen trip gevonden voor dit account.'}
+        {error ? `Er ging iets mis: ${error}` : 'Geen trip gevonden.'}
         <button
           type="button"
           className="mt-4 block w-full border-[1.5px] border-edge bg-card px-4 py-2 text-inkbody hover:border-diesel"
-          onClick={() => void api.signOut()}
+          onClick={() => window.location.reload()}
         >
-          Uitloggen
+          Opnieuw proberen
         </button>
       </CenteredMessage>
     )
   }
+
+  const currentProfile = data.members.find((m) => m.id === profileId) ?? null
+  if (!currentProfile) return <WhoAmIScreen members={data.members} />
 
   const openDay = data.days.find((d) => d.id === openDayId) ?? null
 
@@ -70,7 +70,7 @@ export default function App() {
 
   return (
     <div className="min-h-dvh bg-cream">
-      <Header data={data} currentProfile={profile} view={view} onViewChange={setView} />
+      <Header data={data} currentProfile={currentProfile} view={view} onViewChange={setView} />
       <SummaryBar data={data} />
 
       {error && (

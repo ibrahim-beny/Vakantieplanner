@@ -1,23 +1,19 @@
 -- ============================================================
 -- Seed: "USA Roadtrip september 2026" (19 dagen, 1 t/m 19 september)
 --
--- VOORAF (zie README):
---   1. Maak in het Supabase-dashboard (Authentication > Users) handmatig
---      de 2 gebruikers aan (magic link, geen wachtwoord nodig).
---   2. Kopieer hun UUID's en plak ze hieronder bij user1/user2.
---   3. Vervang REISGENOOT_NAAM door de echte naam van de tweede reisgenoot.
---   4. Draai dit script daarna in de SQL-editor.
+-- Draai dit script in de Supabase SQL-editor, ná schema.sql. Geen
+-- accounts of UUID's nodig — die worden hier gewoon gegenereerd.
 -- ============================================================
 
 do $$
 declare
-  user1 uuid := '00000000-0000-0000-0000-000000000001'; -- << VERVANG: UUID van Ibrahim (i.benyahya1995@gmail.com)
-  user2 uuid := '00000000-0000-0000-0000-000000000002'; -- << VERVANG: UUID van de tweede reisgenoot
+  user1 uuid := gen_random_uuid();
+  user2 uuid := gen_random_uuid();
   v_trip uuid;
 begin
   insert into profiles (id, display_name, color) values
     (user1, 'Ibrahim', '#B5502F'),
-    (user2, 'REISGENOOT_NAAM', '#2C3B4A'); -- << VERVANG de naam
+    (user2, 'Zaid', '#2C3B4A');
 
   insert into trips (name, start_date, end_date, created_by)
   values ('USA Roadtrip september 2026', '2026-09-01', '2026-09-19', user1)

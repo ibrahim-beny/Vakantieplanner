@@ -1,4 +1,5 @@
 import { addDaysISO } from '../lib/dates'
+import { getStoredProfileId } from '../lib/identity'
 import type { TripApi } from './tripApi'
 import type { DayComment, DayType, Profile, TripData, TripDay } from '../lib/types'
 
@@ -10,7 +11,7 @@ import type { DayComment, DayType, Profile, TripData, TripDay } from '../lib/typ
  */
 
 const IBRAHIM: Profile = { id: 'user-ibrahim', display_name: 'Ibrahim', color: '#B5502F' }
-const REISGENOOT: Profile = { id: 'user-reisgenoot', display_name: 'Reisgenoot', color: '#2C3B4A' }
+const REISGENOOT: Profile = { id: 'user-reisgenoot', display_name: 'Zaid', color: '#2C3B4A' }
 
 const TRIP_ID = 'trip-1'
 
@@ -96,13 +97,6 @@ const trip = {
   end_date: '2026-09-19',
 }
 
-// Met ?uitgelogd in de URL start de mock uitgelogd (om het loginscherm te zien)
-let currentProfile: Profile | null = new URLSearchParams(window.location.search).has('uitgelogd')
-  ? null
-  : IBRAHIM
-const listeners = new Set<(p: Profile | null) => void>()
-const notify = () => listeners.forEach((cb) => cb(currentProfile))
-
 const sortDays = () => days.sort((a, b) => a.date.localeCompare(b.date))
 const syncRange = () => {
   if (days.length === 0) return
@@ -116,31 +110,12 @@ const requireDay = (dayId: string): TripDay => {
   return day
 }
 const stamp = (day: TripDay) => {
-  day.updated_by = currentProfile?.id ?? null
+  day.updated_by = getStoredProfileId()
   day.updated_at = new Date().toISOString()
 }
 const delay = () => new Promise((r) => setTimeout(r, 120))
 
 export const mockApi: TripApi = {
-  async getProfile() {
-    return currentProfile
-  },
-  onAuthChange(cb) {
-    listeners.add(cb)
-    return () => listeners.delete(cb)
-  },
-  async signInWithMagicLink() {
-    await delay() // LoginScreen toont daarna de "check je mail"-stap
-  },
-  async signOut() {
-    currentProfile = null
-    notify()
-  },
-  async devLogin() {
-    currentProfile = IBRAHIM
-    notify()
-  },
-
   async fetchTripData(): Promise<TripData> {
     await delay()
     sortDays()
@@ -210,7 +185,7 @@ export const mockApi: TripApi = {
     const comment: DayComment = {
       id: newId('comment'),
       trip_day_id: dayId,
-      author_id: currentProfile?.id ?? '',
+      author_id: getStoredProfileId() ?? '',
       body,
       created_at: new Date().toISOString(),
     }

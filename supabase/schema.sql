@@ -3,9 +3,10 @@
 -- Draai dit eenmalig in de Supabase SQL-editor (of via supabase db push).
 -- ============================================================
 
--- Gebruikersprofiel gekoppeld aan Supabase auth.users
+-- Gebruikersprofiel — geen login, gewoon een naam + kleur om bij te houden
+-- wie een dag heeft bewerkt.
 create table profiles (
-  id uuid primary key references auth.users(id),
+  id uuid primary key default gen_random_uuid(),
   display_name text not null,
   color text not null -- avatarkleur, bijv. #B5502F / #2C3B4A
 );
@@ -71,87 +72,9 @@ create trigger trip_days_updated_at
   for each row execute function set_trip_day_updated_at();
 
 -- ============================================================
--- Row Level Security
+-- Geen Row Level Security: de planner is bewust volledig open —
+-- iedereen met de link mag alles lezen en bewerken, zonder login.
+-- Supabase geeft standaard (via de default privileges op het
+-- public-schema) volledige toegang aan de anon-rol zolang er geen RLS
+-- actief is, dus dat is voldoende.
 -- ============================================================
-
--- Helpers als SECURITY DEFINER zodat policies op trip_members niet
--- recursief naar zichzelf verwijzen (dat geeft in Postgres een
--- infinite-recursion fout).
-create or replace function is_trip_member(t_id uuid)
-returns boolean language sql security definer set search_path = public stable as $$
-  select exists (
-    select 1 from trip_members
-    where trip_id = t_id and user_id = auth.uid()
-  );
-$$;
-
-create or replace function is_trip_creator(t_id uuid)
-returns boolean language sql security definer set search_path = public stable as $$
-  select exists (
-    select 1 from trips
-    where id = t_id and created_by = auth.uid()
-  );
-$$;
-
-create or replace function is_day_member(d_id uuid)
-returns boolean language sql security definer set search_path = public stable as $$
-  select exists (
-    select 1
-    from trip_days d
-    join trip_members m on m.trip_id = d.trip_id
-    where d.id = d_id and m.user_id = auth.uid()
-  );
-$$;
-
-alter table profiles enable row level security;
-alter table trips enable row level security;
-alter table trip_members enable row level security;
-alter table trip_days enable row level security;
-alter table trip_day_comments enable row level security;
-
--- profiles: alle ingelogde gebruikers kunnen profielen lezen (nodig voor
--- avatars/"laatst bewerkt door"); alleen je eigen profiel is bewerkbaar.
-create policy "profiles: lezen voor ingelogd" on profiles
-  for select to authenticated using (true);
-create policy "profiles: eigen profiel bewerken" on profiles
-  for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
-
--- trips: alleen zichtbaar/bewerkbaar voor leden.
-create policy "trips: lezen voor leden" on trips
-  for select to authenticated using (is_trip_member(id));
-create policy "trips: bewerken voor leden" on trips
-  for update to authenticated using (is_trip_member(id)) with check (is_trip_member(id));
-create policy "trips: aanmaken als jezelf" on trips
-  for insert to authenticated with check (created_by = auth.uid());
-create policy "trips: verwijderen door maker" on trips
-  for delete to authenticated using (created_by = auth.uid());
-
--- trip_members: je ziet lidmaatschappen van trips waar je zelf lid van bent;
--- alleen de maker van een trip beheert de ledenlijst.
-create policy "members: lezen voor leden" on trip_members
-  for select to authenticated using (user_id = auth.uid() or is_trip_member(trip_id));
-create policy "members: toevoegen door maker" on trip_members
-  for insert to authenticated with check (is_trip_creator(trip_id));
-create policy "members: verwijderen door maker of jezelf" on trip_members
-  for delete to authenticated using (is_trip_creator(trip_id) or user_id = auth.uid());
-
--- trip_days: volledige CRUD, alleen voor leden van de trip.
-create policy "days: lezen voor leden" on trip_days
-  for select to authenticated using (is_trip_member(trip_id));
-create policy "days: aanmaken voor leden" on trip_days
-  for insert to authenticated with check (is_trip_member(trip_id));
-create policy "days: bewerken voor leden" on trip_days
-  for update to authenticated using (is_trip_member(trip_id)) with check (is_trip_member(trip_id));
-create policy "days: verwijderen voor leden" on trip_days
-  for delete to authenticated using (is_trip_member(trip_id));
-
--- trip_day_comments: leden van de trip (via join op trip_days) lezen;
--- plaatsen alleen als jezelf; eigen reacties bewerken/verwijderen.
-create policy "comments: lezen voor leden" on trip_day_comments
-  for select to authenticated using (is_day_member(trip_day_id));
-create policy "comments: plaatsen als jezelf" on trip_day_comments
-  for insert to authenticated with check (author_id = auth.uid() and is_day_member(trip_day_id));
-create policy "comments: eigen reactie bewerken" on trip_day_comments
-  for update to authenticated using (author_id = auth.uid()) with check (author_id = auth.uid());
-create policy "comments: eigen reactie verwijderen" on trip_day_comments
-  for delete to authenticated using (author_id = auth.uid());

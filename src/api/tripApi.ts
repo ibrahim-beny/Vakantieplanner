@@ -1,4 +1,4 @@
-import type { DayPatch, Profile, TripData } from '../lib/types'
+import type { DayPatch, TripData } from '../lib/types'
 
 /**
  * Datalaag-contract. Productie praat met Supabase (supabaseApi); in dev kan
@@ -6,15 +6,6 @@ import type { DayPatch, Profile, TripData } from '../lib/types'
  * Sync-model is bewust simpel: elke mutatie schrijft weg, de caller refetcht.
  */
 export interface TripApi {
-  // auth
-  getProfile(): Promise<Profile | null>
-  onAuthChange(cb: (profile: Profile | null) => void): () => void
-  signInWithMagicLink(email: string): Promise<void>
-  signOut(): Promise<void>
-  /** Alleen aanwezig op de dev-mock: direct inloggen zonder magic link. */
-  devLogin?(): Promise<void>
-
-  // data
   fetchTripData(): Promise<TripData | null>
   /** Maakt een dag aan en geeft het nieuwe day-id terug. */
   createDay(tripId: string, fields: { date: string } & DayPatch): Promise<string>

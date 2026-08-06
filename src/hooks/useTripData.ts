@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
-import type { DayPatch, Profile, TripData } from '../lib/types'
+import type { DayPatch, TripData } from '../lib/types'
 
 export interface TripMutations {
   createDay(fields: { date: string } & DayPatch): Promise<string | null>
@@ -15,9 +15,9 @@ export interface TripMutations {
  * Laadt de actieve trip en biedt mutaties aan volgens het simpele
  * save & refetch-model: schrijf naar de backend, haal daarna alles opnieuw op.
  */
-export function useTripData(profile: Profile | null) {
+export function useTripData() {
   const [data, setData] = useState<TripData | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
@@ -32,13 +32,8 @@ export function useTripData(profile: Profile | null) {
   }, [])
 
   useEffect(() => {
-    if (profile) {
-      setLoading(true)
-      void refetch()
-    } else {
-      setData(null)
-    }
-  }, [profile, refetch])
+    void refetch()
+  }, [refetch])
 
   const run = useCallback(
     async (fn: () => Promise<void>) => {
