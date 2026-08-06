@@ -107,13 +107,6 @@ export function CalendarView({
   async function handleMove(dayId: string, targetDate: string) {
     const source = days.find((d) => d.id === dayId)
     if (!source || source.date === targetDate) return
-    const existing = dayByDate.get(targetDate)
-    if (
-      existing &&
-      !window.confirm(`Dag op ${formatFull(targetDate)} bevat al gegevens. Overschrijven?`)
-    ) {
-      return
-    }
     await mutations.moveDay(dayId, targetDate)
   }
 
@@ -398,13 +391,6 @@ export function CalendarView({
           onConfirm={async (patch) => {
             const target = dayByDate.get(pasteDate)
             if (target) {
-              if (
-                !window.confirm(
-                  `Dag op ${formatFull(pasteDate)} bevat al gegevens. Overschrijven?`,
-                )
-              ) {
-                return
-              }
               await mutations.updateDay(target.id, patch)
             } else {
               await mutations.createDay({

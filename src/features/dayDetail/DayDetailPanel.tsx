@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { DAY_TYPES, DAY_TYPE_KEYS } from '../../lib/dayTypes'
-import { formatFull } from '../../lib/dates'
 import type { DayType, Profile, TripDay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { ActivityTagInput } from './ActivityTagInput'
@@ -151,14 +150,6 @@ export function DayDetailPanel({
 
   function changeDate(newDate: string) {
     if (!newDate || newDate === day.date) return
-    const existing = days.find((d) => d.date === newDate && d.id !== day.id)
-    if (
-      existing &&
-      !window.confirm(`Dag op ${formatFull(newDate)} bevat al gegevens. Overschrijven?`)
-    ) {
-      setDate(day.date)
-      return
-    }
     setDate(newDate)
     void mutations.moveDay(day.id, newDate)
   }

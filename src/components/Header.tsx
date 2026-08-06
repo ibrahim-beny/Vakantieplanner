@@ -69,7 +69,7 @@ export function Header({
                 isCurrent ? `${member.display_name} (jij) — wisselen` : member.display_name
               }
               onClick={() => {
-                if (isCurrent && window.confirm('Wie je bent, wisselen?')) clearStoredProfileId()
+                if (isCurrent) clearStoredProfileId()
               }}
               className="flex h-9 w-9 items-center justify-center rounded-full font-display text-[15px] font-bold text-card"
               style={{
