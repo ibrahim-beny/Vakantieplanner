@@ -13,23 +13,19 @@ interface Stop {
 }
 
 /**
- * Opeenvolgende dagen op dezelfde locatie collapsen tot één pin. De
- * gegeocodeerde slaapplek (via Nominatim) heeft voorrang op de handmatige
- * lat/lng van het Locatie-veld, zodat de route de echte overnachtingsplek
- * volgt zodra die bekend is.
+ * Opeenvolgende dagen op dezelfde locatie collapsen tot één pin. Gebruikt
+ * de coördinaten van het Locatie-veld (via Nominatim-zoeken opgehaald) —
+ * de overnachtingslocatie is puur ter naslag en telt hier niet mee.
  */
 function buildStops(days: TripDay[]): Stop[] {
   const stops: Stop[] = []
   for (const day of days) {
-    const lat = day.overnight_lat ?? day.lat
-    const lng = day.overnight_lng ?? day.lng
-    if (lat == null || lng == null) continue
-    const name = day.overnight_lat != null ? (day.overnight_location ?? day.location_name) : day.location_name
+    if (day.lat == null || day.lng == null) continue
     const last = stops[stops.length - 1]
-    if (last && last.location_name === name) {
+    if (last && last.location_name === day.location_name) {
       last.days.push(day)
     } else {
-      stops.push({ location_name: name, lat, lng, days: [day] })
+      stops.push({ location_name: day.location_name, lat: day.lat, lng: day.lng, days: [day] })
     }
   }
   return stops
@@ -109,7 +105,8 @@ export function MapView({
           </MapContainer>
         ) : (
           <p className="p-6 font-mono text-[13px] text-muted">
-            Nog geen dagen met coördinaten — vul lat/lng in via het dag-detailpaneel.
+            Nog geen dagen met coördinaten — zoek een locatie in het veld "Locatie" via het
+            dag-detailpaneel.
           </p>
         )}
       </div>

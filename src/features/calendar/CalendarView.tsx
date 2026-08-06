@@ -342,6 +342,21 @@ export function CalendarView({
               Kopieer dag
             </button>
           )}
+          {dayByDate.get(contextMenu.date) && (
+            <button
+              type="button"
+              className="block w-full px-4 py-2 text-left text-[14px] text-ink hover:bg-sand"
+              onClick={() => {
+                const day = dayByDate.get(contextMenu.date)
+                setContextMenu(null)
+                if (day && window.confirm(`Dag op ${formatFull(contextMenu.date)} verwijderen?`)) {
+                  void mutations.deleteDay(day.id)
+                }
+              }}
+            >
+              Verwijder dag
+            </button>
+          )}
           {clipboard && (
             <button
               type="button"

@@ -118,17 +118,30 @@ export function DayDetailPanel({
   }
 
   /** Vrij typen maakt de vorige, geverifieerde Nominatim-coördinaat ongeldig. */
+  function changeLocationText(text: string) {
+    set({ location_name: text, lat: '', lng: '' })
+  }
+
+  function pickLocationPlace(place: { label: string; lat: number; lng: number }) {
+    set({ location_name: place.label, lat: place.lat.toString(), lng: place.lng.toString() })
+    void mutations.updateDay(day.id, {
+      location_name: place.label,
+      lat: place.lat,
+      lng: place.lng,
+    })
+  }
+
+  /** Vrij typen maakt de vorige, geverifieerde Nominatim-coördinaat ongeldig. */
   function changeOvernightText(text: string) {
     set({ overnight_location: text, overnight_lat: '', overnight_lng: '' })
   }
 
   function pickOvernightPlace(place: { label: string; lat: number; lng: number }) {
-    const next = {
+    set({
       overnight_location: place.label,
       overnight_lat: place.lat.toString(),
       overnight_lng: place.lng.toString(),
-    }
-    set(next)
+    })
     void mutations.updateDay(day.id, {
       overnight_location: place.label,
       overnight_lat: place.lat,
@@ -194,42 +207,13 @@ export function DayDetailPanel({
             <label htmlFor="day-location" className="field-label">
               Locatie
             </label>
-            <input
+            <PlaceSearchInput
               id="day-location"
-              className="field-input"
               value={draft.location_name}
-              onChange={(e) => set({ location_name: e.target.value })}
+              onChange={changeLocationText}
               onBlur={commitText}
+              onPlaceSelected={pickLocationPlace}
             />
-          </div>
-
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label htmlFor="day-lat" className="field-label">
-                Lat
-              </label>
-              <input
-                id="day-lat"
-                inputMode="decimal"
-                className="field-input font-mono text-[14px]"
-                value={draft.lat}
-                onChange={(e) => set({ lat: e.target.value })}
-                onBlur={commitText}
-              />
-            </div>
-            <div className="flex-1">
-              <label htmlFor="day-lng" className="field-label">
-                Lng
-              </label>
-              <input
-                id="day-lng"
-                inputMode="decimal"
-                className="field-input font-mono text-[14px]"
-                value={draft.lng}
-                onChange={(e) => set({ lng: e.target.value })}
-                onBlur={commitText}
-              />
-            </div>
           </div>
 
           <div>
@@ -261,6 +245,9 @@ export function DayDetailPanel({
               onBlur={commitText}
               onPlaceSelected={pickOvernightPlace}
             />
+            <p className="mt-1.5 font-mono text-[11px] text-muted">
+              Naam van hotel/motel — alleen ter naslag, telt niet mee voor de kaart.
+            </p>
           </div>
 
           <div>
