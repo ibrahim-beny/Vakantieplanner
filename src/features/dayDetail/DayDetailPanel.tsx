@@ -395,9 +395,7 @@ export function DayDetailPanel({
               type="button"
               className="btn-danger-outline w-full"
               onClick={() => {
-                if (window.confirm(`Dag op ${formatFull(day.date)} verwijderen?`)) {
-                  void mutations.deleteDay(day.id).then(onClose)
-                }
+                void mutations.deleteDay(day.id).then(onClose)
               }}
             >
               Dag verwijderen

@@ -349,9 +349,7 @@ export function CalendarView({
               onClick={() => {
                 const day = dayByDate.get(contextMenu.date)
                 setContextMenu(null)
-                if (day && window.confirm(`Dag op ${formatFull(contextMenu.date)} verwijderen?`)) {
-                  void mutations.deleteDay(day.id)
-                }
+                if (day) void mutations.deleteDay(day.id)
               }}
             >
               Verwijder dag
