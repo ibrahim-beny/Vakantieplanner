@@ -1,4 +1,4 @@
-export type DayType = 'chill' | 'licht' | 'gemiddeld' | 'zwaar' | 'vertrek'
+export type DayType = 'chill' | 'licht' | 'gemiddeld' | 'zwaar' | 'vertrek' | 'aankomst'
 
 export interface Profile {
   id: string

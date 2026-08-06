@@ -30,7 +30,7 @@ type SeedDay = [
 ]
 
 const SEED_DAYS: SeedDay[] = [
-  ['2026-09-01', 'San Francisco', 37.7749, -122.4194, 'chill', 'Budget motel, San Francisco', ['Aankomst', 'Wandeling Golden Gate Bridge'], 0, 0, 'Vlucht landt 14:20, motel check-in vanaf 16:00.', IBRAHIM.id],
+  ['2026-09-01', 'San Francisco', 37.7749, -122.4194, 'aankomst', 'Budget motel, San Francisco', ['Aankomst', 'Wandeling Golden Gate Bridge'], 0, 0, 'Vlucht landt 14:20, motel check-in vanaf 16:00.', IBRAHIM.id],
   ['2026-09-02', 'San Francisco', 37.7749, -122.4194, 'chill', 'Budget motel, San Francisco', ['Alcatraz (ochtend)', "Fisherman's Wharf"], 0, 0, 'Alcatraz-tickets vooraf boeken, vaak uitverkocht.', REISGENOOT.id],
   ['2026-09-03', 'San Francisco', 37.7749, -122.4194, 'chill', 'Budget motel, San Francisco', ['Chinatown', 'Twin Peaks uitzicht'], 0, 0, 'Derde dag in San Francisco — extra tijd voor wat je zelf nog wilt zien.', IBRAHIM.id],
   ['2026-09-04', 'South Lake Tahoe', 38.9399, -119.9772, 'licht', 'Lakeside cabin, South Lake Tahoe', ['Kajakken op het meer'], 340, 3.5, null, IBRAHIM.id],

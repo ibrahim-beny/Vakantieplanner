@@ -12,6 +12,7 @@ export const DAY_TYPES: Record<DayType, { label: string; bg: string; fg: string 
   gemiddeld: { label: 'Gemiddeld rijden', bg: '#F0DCAE', fg: '#7D5A1D' },
   zwaar: { label: 'Zwaar rijden', bg: '#E8C4B4', fg: '#8A3D24' },
   vertrek: { label: 'Vertrek', bg: '#C9D2D8', fg: '#2C3B4A' },
+  aankomst: { label: 'Aankomst', bg: '#D6D0E3', fg: '#3D3457' },
 }
 
 export const DAY_TYPE_KEYS = Object.keys(DAY_TYPES) as DayType[]
