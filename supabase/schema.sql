@@ -38,7 +38,7 @@ create table trip_days (
   location_name text not null,
   lat double precision,
   lng double precision,
-  day_type text not null check (day_type in ('chill', 'licht', 'gemiddeld', 'zwaar', 'vertrek')),
+  day_type text not null check (day_type in ('chill', 'licht', 'gemiddeld', 'zwaar', 'vertrek', 'aankomst')),
   overnight_location text,
   overnight_lat double precision,
   overnight_lng double precision,
