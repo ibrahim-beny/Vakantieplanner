@@ -1,14 +1,15 @@
-import { DAY_TYPES } from '../../lib/dayTypes'
 import { formatDayMonth } from '../../lib/dates'
 import { bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
+import { findStayForDate } from '../../lib/stays'
 import { getStoredProfileId } from '../../lib/identity'
-import type { Profile, TripDay } from '../../lib/types'
+import type { Profile, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { ProgressLine } from './ProgressLine'
 
 /** Lineaire dag-voor-dag lijst — de primaire weergave op mobiel. */
 export function TimelineView({
   days,
+  stays,
   members,
   mutations,
   onOpenDay,
@@ -16,6 +17,7 @@ export function TimelineView({
   onShift,
 }: {
   days: TripDay[]
+  stays: TripStay[]
   members: Profile[]
   mutations: TripMutations
   onOpenDay: (id: string) => void
@@ -25,8 +27,8 @@ export function TimelineView({
   const memberName = (id: string | null) =>
     members.find((m) => m.id === id)?.display_name ?? 'onbekend'
 
-  function cycleBooking(day: TripDay) {
-    void mutations.updateDay(day.id, nextBookingPatch(day, getStoredProfileId()))
+  function cycleBooking(stay: TripStay) {
+    void mutations.updateStay(stay.id, nextBookingPatch(stay, getStoredProfileId()))
   }
 
   return (
@@ -44,8 +46,8 @@ export function TimelineView({
 
       <div className="flex flex-col gap-3">
         {days.map((day) => {
-          const dt = DAY_TYPES[day.day_type]
-          const badge = bookingBadge(day)
+          const stay = findStayForDate(stays, day.date)
+          const badge = stay ? bookingBadge(stay) : null
           const { day: dayNr, month } = formatDayMonth(day.date)
           const hasDrive = (day.drive_time_hours ?? 0) > 0 || (day.drive_distance_km ?? 0) > 0
           return (
@@ -69,47 +71,43 @@ export function TimelineView({
                   <span className="text-[18px] font-bold leading-snug text-ink">
                     {day.location_name}
                   </span>
-                  <span
-                    className="px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.05em]"
-                    style={{ background: dt.bg, color: dt.fg }}
-                  >
-                    {dt.label}
-                  </span>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    aria-label={
-                      badge
-                        ? `${badge.label} — klik om te wijzigen`
-                        : 'Nog niet geboekt — klik om te boeken'
-                    }
-                    className="flex h-[18px] w-[18px] items-center justify-center font-mono text-[10.5px] font-bold"
-                    style={{
-                      background: badge ? badge.bg : 'transparent',
-                      color: badge ? badge.fg : 'var(--color-muted)',
-                      border: badge
-                        ? '1.5px solid var(--color-card)'
-                        : '1.5px solid var(--color-edge)',
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      cycleBooking(day)
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        cycleBooking(day)
+                  {stay && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={
+                        badge
+                          ? `${badge.label} — klik om te wijzigen`
+                          : 'Nog niet geboekt — klik om te boeken'
                       }
-                    }}
-                  >
-                    {badge ? badge.glyph : ''}
-                  </span>
+                      className="flex h-[18px] w-[18px] items-center justify-center font-mono text-[10.5px] font-bold"
+                      style={{
+                        background: badge ? badge.bg : 'transparent',
+                        color: badge ? badge.fg : 'var(--color-muted)',
+                        border: badge
+                          ? '1.5px solid var(--color-card)'
+                          : '1.5px solid var(--color-edge)',
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        cycleBooking(stay)
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          cycleBooking(stay)
+                        }
+                      }}
+                    >
+                      {badge ? badge.glyph : ''}
+                    </span>
+                  )}
                 </span>
-                {day.overnight_location && (
+                {stay && (
                   <span className="mt-1 block text-[14px] text-inkbody">
-                    {day.overnight_location}
+                    {stay.location_name}
                   </span>
                 )}
                 {day.activities.length > 0 && (

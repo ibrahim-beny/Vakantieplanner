@@ -1,15 +1,12 @@
 import { useState } from 'react'
 import { Modal } from '../../components/Modal'
-import { DAY_TYPES } from '../../lib/dayTypes'
 import { formatFull } from '../../lib/dates'
 import type { ClipboardDay, DayPatch, TripDay } from '../../lib/types'
 
-type PasteField = 'locatie' | 'dagtype' | 'overnachting' | 'activiteiten' | 'rijinfo' | 'notitie'
+type PasteField = 'locatie' | 'activiteiten' | 'rijinfo' | 'notitie'
 
 const FIELDS: { key: PasteField; label: string; preview: (c: ClipboardDay) => string }[] = [
   { key: 'locatie', label: 'Locatie', preview: (c) => c.location_name },
-  { key: 'dagtype', label: 'Dagtype', preview: (c) => DAY_TYPES[c.day_type].label },
-  { key: 'overnachting', label: 'Overnachting', preview: (c) => c.overnight_location ?? '—' },
   { key: 'activiteiten', label: 'Activiteiten', preview: (c) => c.activities.join(', ') || '—' },
   {
     key: 'rijinfo',
@@ -40,8 +37,6 @@ export function PasteModal({
   // (een dag zonder locatie kan niet bestaan).
   const [checked, setChecked] = useState<Record<PasteField, boolean>>({
     locatie: true,
-    dagtype: true,
-    overnachting: true,
     activiteiten: true,
     rijinfo: true,
     notitie: true,
@@ -54,12 +49,6 @@ export function PasteModal({
       patch.location_name = clipboard.location_name
       patch.lat = clipboard.lat
       patch.lng = clipboard.lng
-    }
-    if (checked.dagtype) patch.day_type = clipboard.day_type
-    if (checked.overnachting) {
-      patch.overnight_location = clipboard.overnight_location
-      patch.overnight_lat = clipboard.overnight_lat
-      patch.overnight_lng = clipboard.overnight_lng
     }
     if (checked.activiteiten) patch.activities = [...clipboard.activities]
     if (checked.rijinfo) {

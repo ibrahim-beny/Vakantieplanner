@@ -8,11 +8,11 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
-import { DAY_TYPES } from '../../lib/dayTypes'
 import { formatFull, formatMonthTitle, parseLocalISO, toLocalISO } from '../../lib/dates'
 import { BOOKING_BADGES, bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
+import { findStayForDate } from '../../lib/stays'
 import { getStoredProfileId } from '../../lib/identity'
-import type { ClipboardDay, TripDay } from '../../lib/types'
+import type { ClipboardDay, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { QuickAddModal } from './QuickAddModal'
 import { PasteModal } from './PasteModal'
@@ -25,10 +25,6 @@ function toClipboard(day: TripDay): ClipboardDay {
     location_name: day.location_name,
     lat: day.lat,
     lng: day.lng,
-    day_type: day.day_type,
-    overnight_location: day.overnight_location,
-    overnight_lat: day.overnight_lat,
-    overnight_lng: day.overnight_lng,
     activities: [...day.activities],
     drive_distance_km: day.drive_distance_km,
     drive_time_hours: day.drive_time_hours,
@@ -38,10 +34,12 @@ function toClipboard(day: TripDay): ClipboardDay {
 
 export function CalendarView({
   days,
+  stays,
   onOpenDay,
   mutations,
 }: {
   days: TripDay[]
+  stays: TripStay[]
   onOpenDay: (id: string) => void
   mutations: TripMutations
 }) {
@@ -100,8 +98,8 @@ export function CalendarView({
     }
   }, [contextMenu])
 
-  function cycleBooking(day: TripDay) {
-    void mutations.updateDay(day.id, nextBookingPatch(day, getStoredProfileId()))
+  function cycleBooking(stay: TripStay) {
+    void mutations.updateStay(stay.id, nextBookingPatch(stay, getStoredProfileId()))
   }
 
   async function handleMove(dayId: string, targetDate: string) {
@@ -154,8 +152,8 @@ export function CalendarView({
           const iso = toLocalISO(date)
           const inMonth = isSameMonth(date, monthCursor)
           const day = dayByDate.get(iso)
-          const dt = day ? DAY_TYPES[day.day_type] : null
-          const badge = day ? bookingBadge(day) : null
+          const stay = findStayForDate(stays, iso)
+          const badge = stay ? bookingBadge(stay) : null
           const isSelected = selectedDate === iso
           const isDragOver = dragOverDate === iso
 
@@ -183,11 +181,9 @@ export function CalendarView({
               style={{
                 height: CELL_HEIGHT,
                 position: 'relative',
-                background: dt ? dt.bg : 'var(--color-card)',
-                color: dt ? dt.fg : 'var(--color-ink)',
-                border: dt
-                  ? `1px solid color-mix(in srgb, ${dt.fg} 30%, transparent)`
-                  : '1px solid var(--color-edge)',
+                background: 'var(--color-card)',
+                color: 'var(--color-ink)',
+                border: '1px solid var(--color-edge)',
                 outline: isDragOver
                   ? '2px dashed var(--color-diesel)'
                   : isSelected
@@ -228,7 +224,7 @@ export function CalendarView({
               }}
             >
               <span className="font-mono text-[12px] opacity-75">{date.getDate()}</span>
-              {day && (
+              {stay && (
                 <span
                   role="button"
                   tabIndex={0}
@@ -247,14 +243,14 @@ export function CalendarView({
                   }}
                   onClick={(e) => {
                     e.stopPropagation()
-                    cycleBooking(day)
+                    cycleBooking(stay)
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
                       e.stopPropagation()
-                      cycleBooking(day)
+                      cycleBooking(stay)
                     }
                   }}
                 >
@@ -266,12 +262,9 @@ export function CalendarView({
                   <span className="block truncate text-[12.5px] font-bold leading-snug">
                     {day.location_name}
                   </span>
-                  <span className="block font-mono text-[10px] uppercase tracking-[0.06em]">
-                    {DAY_TYPES[day.day_type].label}
-                  </span>
-                  {day.overnight_location && (
+                  {stay && (
                     <span className="block truncate text-[11px] leading-snug opacity-85">
-                      {day.overnight_location}
+                      {stay.location_name}
                     </span>
                   )}
                   {day.activities.length > 0 && (
@@ -286,19 +279,7 @@ export function CalendarView({
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-        {Object.values(DAY_TYPES).map((dt) => (
-          <p key={dt.label} className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.06em] text-muted">
-            <span
-              className="inline-block h-[13px] w-[13px]"
-              style={{ background: dt.bg, border: `1px solid ${dt.fg}` }}
-            />
-            {dt.label}
-          </p>
-        ))}
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
         {BOOKING_BADGES.map((b) => (
           <p
             key={b.status}
@@ -370,11 +351,10 @@ export function CalendarView({
         <QuickAddModal
           date={quickAddDate}
           onClose={() => setQuickAddDate(null)}
-          onConfirm={async (location, dayType) => {
+          onConfirm={async (location) => {
             await mutations.createDay({
               date: quickAddDate,
               location_name: location,
-              day_type: dayType,
               activities: [],
             })
             setQuickAddDate(null)

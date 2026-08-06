@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase'
 import { addDaysISO } from '../lib/dates'
 import { getStoredProfileId } from '../lib/identity'
 import type { TripApi } from './tripApi'
-import type { DayComment, DayPatch, Profile, TripDay, TripData } from '../lib/types'
+import type { DayComment, DayPatch, Profile, StayPatch, TripDay, TripData, TripStay } from '../lib/types'
 
 function requireIdentity(): string {
   const id = getStoredProfileId()
@@ -25,7 +25,7 @@ async function syncTripRange(tripId: string): Promise<void> {
     .eq('id', tripId)
 }
 
-function stamped(patch: DayPatch): DayPatch & { updated_by: string } {
+function stamped<T extends object>(patch: T): T & { updated_by: string } {
   return { ...patch, updated_by: requireIdentity() }
 }
 
@@ -41,15 +41,17 @@ export const supabaseApi: TripApi = {
     const trip = trips?.[0]
     if (!trip) return null
 
-    const [membersRes, daysRes] = await Promise.all([
+    const [membersRes, daysRes, staysRes] = await Promise.all([
       supabase
         .from('trip_members')
         .select('profiles(id, display_name, color)')
         .eq('trip_id', trip.id),
       supabase.from('trip_days').select('*').eq('trip_id', trip.id).order('date'),
+      supabase.from('trip_stays').select('*').eq('trip_id', trip.id).order('start_date'),
     ])
     if (membersRes.error) throw new Error(membersRes.error.message)
     if (daysRes.error) throw new Error(daysRes.error.message)
+    if (staysRes.error) throw new Error(staysRes.error.message)
 
     const members = (membersRes.data ?? [])
       .map((row) => row.profiles as unknown as Profile)
@@ -74,7 +76,9 @@ export const supabaseApi: TripApi = {
       comments: comments.filter((c) => c.trip_day_id === d.id),
     }))
 
-    return { trip, days, members }
+    const stays: TripStay[] = staysRes.data ?? []
+
+    return { trip, days, stays, members }
   },
 
   async createDay(tripId, fields) {
@@ -84,7 +88,6 @@ export const supabaseApi: TripApi = {
       .insert({
         trip_id: tripId,
         location_name: 'Nieuwe stop',
-        day_type: 'chill',
         activities: [],
         ...fields,
         updated_by: uid,
@@ -96,7 +99,7 @@ export const supabaseApi: TripApi = {
     return data.id
   },
 
-  async updateDay(dayId, patch) {
+  async updateDay(dayId, patch: DayPatch) {
     const { error } = await supabase
       .from('trip_days')
       .update(stamped(patch))
@@ -168,6 +171,34 @@ export const supabaseApi: TripApi = {
     const { error } = await supabase
       .from('trip_day_comments')
       .insert({ trip_day_id: dayId, author_id: uid, body })
+    if (error) throw new Error(error.message)
+  },
+
+  async createStay(tripId, fields) {
+    const uid = requireIdentity()
+    const { data, error } = await supabase
+      .from('trip_stays')
+      .insert({
+        trip_id: tripId,
+        ...fields,
+        updated_by: uid,
+      })
+      .select('id')
+      .single()
+    if (error) throw new Error(error.message)
+    return data.id
+  },
+
+  async updateStay(stayId, patch: StayPatch) {
+    const { error } = await supabase
+      .from('trip_stays')
+      .update(stamped(patch))
+      .eq('id', stayId)
+    if (error) throw new Error(error.message)
+  },
+
+  async deleteStay(stayId) {
+    const { error } = await supabase.from('trip_stays').delete().eq('id', stayId)
     if (error) throw new Error(error.message)
   },
 }

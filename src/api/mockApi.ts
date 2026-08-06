@@ -1,7 +1,7 @@
 import { addDaysISO } from '../lib/dates'
 import { getStoredProfileId } from '../lib/identity'
 import type { TripApi } from './tripApi'
-import type { DayComment, DayType, Profile, TripData, TripDay } from '../lib/types'
+import type { DayComment, Profile, TripData, TripDay, TripStay } from '../lib/types'
 
 /**
  * In-memory mock van de datalaag, UITSLUITEND voor lokale verificatie
@@ -20,8 +20,6 @@ type SeedDay = [
   location: string,
   lat: number,
   lng: number,
-  dayType: DayType,
-  overnight: string | null,
   activities: string[],
   km: number,
   hours: number,
@@ -30,46 +28,51 @@ type SeedDay = [
 ]
 
 const SEED_DAYS: SeedDay[] = [
-  ['2026-09-01', 'San Francisco', 37.7749, -122.4194, 'aankomst', 'Budget motel, San Francisco', ['Aankomst', 'Wandeling Golden Gate Bridge'], 0, 0, 'Vlucht landt 14:20, motel check-in vanaf 16:00.', IBRAHIM.id],
-  ['2026-09-02', 'San Francisco', 37.7749, -122.4194, 'chill', 'Budget motel, San Francisco', ['Alcatraz (ochtend)', "Fisherman's Wharf"], 0, 0, 'Alcatraz-tickets vooraf boeken, vaak uitverkocht.', REISGENOOT.id],
-  ['2026-09-03', 'San Francisco', 37.7749, -122.4194, 'chill', 'Budget motel, San Francisco', ['Chinatown', 'Twin Peaks uitzicht'], 0, 0, 'Derde dag in San Francisco — extra tijd voor wat je zelf nog wilt zien.', IBRAHIM.id],
-  ['2026-09-04', 'South Lake Tahoe', 38.9399, -119.9772, 'licht', 'Lakeside cabin, South Lake Tahoe', ['Kajakken op het meer'], 340, 3.5, null, IBRAHIM.id],
-  ['2026-09-05', 'South Lake Tahoe', 38.9399, -119.9772, 'chill', 'Lakeside cabin, South Lake Tahoe', ['Wandeling Emerald Bay'], 0, 0, null, IBRAHIM.id],
-  ['2026-09-06', 'Reno', 39.5296, -119.8138, 'licht', 'Budget motel, Reno', ['Downtown Reno', 'Vroeg slapen voor lange rit'], 70, 1, 'Tank volgooien voor morgen — volgende benzinestation is ver.', REISGENOOT.id],
-  ['2026-09-07', 'Salt Lake City', 40.7608, -111.891, 'zwaar', 'Budget motel, Salt Lake City', ['Temple Square (bij aankomst, laat)'], 830, 8.5, 'Lange rit — om 6:00 vertrekken, twee stops onderweg inplannen.', REISGENOOT.id],
-  ['2026-09-08', 'Salt Lake City', 40.7608, -111.891, 'chill', 'Budget motel, Salt Lake City', ['Rustdag', 'Great Salt Lake'], 0, 0, 'Herstellen van gisteren.', IBRAHIM.id],
-  ['2026-09-09', 'Bryce Canyon', 37.6283, -112.1676, 'gemiddeld', 'Lodge bij Bryce Canyon', ['Sunset Point bij aankomst'], 430, 4.5, 'Parkpas $35, geldt ook voor Zion.', IBRAHIM.id],
-  ['2026-09-10', 'Bryce Canyon', 37.6283, -112.1676, 'chill', 'Lodge bij Bryce Canyon', ['Navajo Loop hike'], 0, 0, null, REISGENOOT.id],
-  ['2026-09-11', 'Springdale (Zion)', 37.1889, -112.9986, 'licht', 'Cabin Springdale', ['Intocht Zion Canyon'], 120, 1.5, null, REISGENOOT.id],
-  ['2026-09-12', 'Springdale (Zion)', 37.1889, -112.9986, 'chill', 'Cabin Springdale', ['Angels Landing hike'], 0, 0, 'Permit voor Angels Landing nodig — vooraf geregeld.', IBRAHIM.id],
-  ['2026-09-13', 'Springdale (Zion)', 37.1889, -112.9986, 'chill', 'Cabin Springdale', ['The Narrows'], 0, 0, null, IBRAHIM.id],
-  ['2026-09-14', 'Springdale (Zion)', 37.1889, -112.9986, 'chill', 'Cabin Springdale', ['Kolob Canyons (optioneel)', 'Rustdag'], 0, 0, 'Extra dag in Zion — lekker rustig aan of nog een hike erbij.', REISGENOOT.id],
-  ['2026-09-15', 'Las Vegas', 36.1699, -115.1398, 'gemiddeld', 'Budget motel, Las Vegas', ['Valley of Fire State Park onderweg'], 270, 3, 'Valley of Fire dagpas $10, contant meenemen.', REISGENOOT.id],
-  ['2026-09-16', 'Las Vegas', 36.1699, -115.1398, 'chill', 'Budget motel, Las Vegas', ["The Strip 's avonds"], 0, 0, null, REISGENOOT.id],
-  ['2026-09-17', 'Las Vegas', 36.1699, -115.1398, 'licht', 'Budget motel, Las Vegas', ['Dagtrip Hoover Dam'], 100, 2, 'Geen check-out nodig, gewoon een dagtrip vanuit hetzelfde motel.', IBRAHIM.id],
-  ['2026-09-18', 'Los Angeles', 34.0522, -118.2437, 'zwaar', 'Budget motel, Los Angeles', ['Aankomst', 'Santa Monica Pier'], 430, 4.5, null, IBRAHIM.id],
-  ['2026-09-19', 'Los Angeles', 34.0522, -118.2437, 'vertrek', null, ['Laatste ochtend', 'Vlucht terug (LAX)'], 0, 0, 'Auto inleveren bij verhuurbedrijf vóór 10:00, vlucht om 14:40.', IBRAHIM.id],
+  ['2026-09-01', 'San Francisco', 37.7749, -122.4194, ['Aankomst', 'Wandeling Golden Gate Bridge'], 0, 0, 'Vlucht landt 14:20, motel check-in vanaf 16:00.', IBRAHIM.id],
+  ['2026-09-02', 'San Francisco', 37.7749, -122.4194, ['Alcatraz (ochtend)', "Fisherman's Wharf"], 0, 0, 'Alcatraz-tickets vooraf boeken, vaak uitverkocht.', REISGENOOT.id],
+  ['2026-09-03', 'San Francisco', 37.7749, -122.4194, ['Chinatown', 'Twin Peaks uitzicht'], 0, 0, 'Derde dag in San Francisco — extra tijd voor wat je zelf nog wilt zien.', IBRAHIM.id],
+  ['2026-09-04', 'South Lake Tahoe', 38.9399, -119.9772, ['Kajakken op het meer'], 340, 3.5, null, IBRAHIM.id],
+  ['2026-09-05', 'South Lake Tahoe', 38.9399, -119.9772, ['Wandeling Emerald Bay'], 0, 0, null, IBRAHIM.id],
+  ['2026-09-06', 'Reno', 39.5296, -119.8138, ['Downtown Reno', 'Vroeg slapen voor lange rit'], 70, 1, 'Tank volgooien voor morgen — volgende benzinestation is ver.', REISGENOOT.id],
+  ['2026-09-07', 'Salt Lake City', 40.7608, -111.891, ['Temple Square (bij aankomst, laat)'], 830, 8.5, 'Lange rit — om 6:00 vertrekken, twee stops onderweg inplannen.', REISGENOOT.id],
+  ['2026-09-08', 'Salt Lake City', 40.7608, -111.891, ['Rustdag', 'Great Salt Lake'], 0, 0, 'Herstellen van gisteren.', IBRAHIM.id],
+  ['2026-09-09', 'Bryce Canyon', 37.6283, -112.1676, ['Sunset Point bij aankomst'], 430, 4.5, 'Parkpas $35, geldt ook voor Zion.', IBRAHIM.id],
+  ['2026-09-10', 'Bryce Canyon', 37.6283, -112.1676, ['Navajo Loop hike'], 0, 0, null, REISGENOOT.id],
+  ['2026-09-11', 'Springdale (Zion)', 37.1889, -112.9986, ['Intocht Zion Canyon'], 120, 1.5, null, REISGENOOT.id],
+  ['2026-09-12', 'Springdale (Zion)', 37.1889, -112.9986, ['Angels Landing hike'], 0, 0, 'Permit voor Angels Landing nodig — vooraf geregeld.', IBRAHIM.id],
+  ['2026-09-13', 'Springdale (Zion)', 37.1889, -112.9986, ['The Narrows'], 0, 0, null, IBRAHIM.id],
+  ['2026-09-14', 'Springdale (Zion)', 37.1889, -112.9986, ['Kolob Canyons (optioneel)', 'Rustdag'], 0, 0, 'Extra dag in Zion — lekker rustig aan of nog een hike erbij.', REISGENOOT.id],
+  ['2026-09-15', 'Las Vegas', 36.1699, -115.1398, ['Valley of Fire State Park onderweg'], 270, 3, 'Valley of Fire dagpas $10, contant meenemen.', REISGENOOT.id],
+  ['2026-09-16', 'Las Vegas', 36.1699, -115.1398, ["The Strip 's avonds"], 0, 0, null, REISGENOOT.id],
+  ['2026-09-17', 'Las Vegas', 36.1699, -115.1398, ['Dagtrip Hoover Dam'], 100, 2, 'Geen check-out nodig, gewoon een dagtrip vanuit hetzelfde motel.', IBRAHIM.id],
+  ['2026-09-18', 'Los Angeles', 34.0522, -118.2437, ['Aankomst', 'Santa Monica Pier'], 430, 4.5, null, IBRAHIM.id],
+  ['2026-09-19', 'Los Angeles', 34.0522, -118.2437, ['Laatste ochtend', 'Vlucht terug (LAX)'], 0, 0, 'Auto inleveren bij verhuurbedrijf vóór 10:00, vlucht om 14:40.', IBRAHIM.id],
+]
+
+type SeedStay = [location: string, start_date: string, end_date: string]
+
+const SEED_STAYS: SeedStay[] = [
+  ['Budget motel, San Francisco', '2026-09-01', '2026-09-03'],
+  ['Lakeside cabin, South Lake Tahoe', '2026-09-04', '2026-09-05'],
+  ['Budget motel, Reno', '2026-09-06', '2026-09-06'],
+  ['Budget motel, Salt Lake City', '2026-09-07', '2026-09-08'],
+  ['Lodge bij Bryce Canyon', '2026-09-09', '2026-09-10'],
+  ['Cabin Springdale', '2026-09-11', '2026-09-14'],
+  ['Budget motel, Las Vegas', '2026-09-15', '2026-09-17'],
+  ['Budget motel, Los Angeles', '2026-09-18', '2026-09-18'],
 ]
 
 let nextId = 1
 const newId = (prefix: string) => `${prefix}-${nextId++}`
 
 const days: TripDay[] = SEED_DAYS.map(
-  ([date, location_name, lat, lng, day_type, overnight_location, activities, km, hours, notes, editor]) => ({
+  ([date, location_name, lat, lng, activities, km, hours, notes, editor]) => ({
     id: newId('day'),
     trip_id: TRIP_ID,
     date,
     location_name,
     lat,
     lng,
-    day_type,
-    overnight_location,
-    overnight_lat: null,
-    overnight_lng: null,
-    accommodation_booked: false,
-    accommodation_booked_by: null,
-    accommodation_paid_back: false,
-    accommodation_cost: null,
     activities,
     drive_distance_km: km,
     drive_time_hours: hours,
@@ -79,6 +82,22 @@ const days: TripDay[] = SEED_DAYS.map(
     comments: [],
   }),
 )
+
+const stays: TripStay[] = SEED_STAYS.map(([location_name, start_date, end_date]) => ({
+  id: newId('stay'),
+  trip_id: TRIP_ID,
+  location_name,
+  start_date,
+  end_date,
+  lat: null,
+  lng: null,
+  cost: null,
+  booked: false,
+  booked_by: null,
+  paid_back: false,
+  updated_by: null,
+  updated_at: new Date().toISOString(),
+}))
 
 function seedComment(date: string, authorId: string, body: string) {
   const day = days.find((d) => d.date === date)
@@ -115,9 +134,14 @@ const requireDay = (dayId: string): TripDay => {
   if (!day) throw new Error('Dag niet gevonden.')
   return day
 }
-const stamp = (day: TripDay) => {
-  day.updated_by = getStoredProfileId()
-  day.updated_at = new Date().toISOString()
+const requireStay = (stayId: string): TripStay => {
+  const stay = stays.find((s) => s.id === stayId)
+  if (!stay) throw new Error('Verblijf niet gevonden.')
+  return stay
+}
+const stamp = (row: { updated_by: string | null; updated_at: string }) => {
+  row.updated_by = getStoredProfileId()
+  row.updated_at = new Date().toISOString()
 }
 const delay = () => new Promise((r) => setTimeout(r, 120))
 
@@ -125,7 +149,7 @@ export const mockApi: TripApi = {
   async fetchTripData(): Promise<TripData> {
     await delay()
     sortDays()
-    return structuredClone({ trip, days, members: [IBRAHIM, REISGENOOT] })
+    return structuredClone({ trip, days, stays, members: [IBRAHIM, REISGENOOT] })
   },
 
   async createDay(_tripId, fields) {
@@ -136,14 +160,6 @@ export const mockApi: TripApi = {
       location_name: 'Nieuwe stop',
       lat: null,
       lng: null,
-      day_type: 'chill',
-      overnight_location: null,
-      overnight_lat: null,
-      overnight_lng: null,
-      accommodation_booked: false,
-      accommodation_booked_by: null,
-      accommodation_paid_back: false,
-      accommodation_cost: null,
       activities: [],
       drive_distance_km: null,
       drive_time_hours: null,
@@ -202,5 +218,38 @@ export const mockApi: TripApi = {
       created_at: new Date().toISOString(),
     }
     day.comments.push(comment)
+  },
+
+  async createStay(_tripId, fields) {
+    await delay()
+    const stay: TripStay = {
+      id: newId('stay'),
+      trip_id: TRIP_ID,
+      lat: null,
+      lng: null,
+      cost: null,
+      booked: false,
+      booked_by: null,
+      paid_back: false,
+      updated_by: null,
+      updated_at: '',
+      ...fields,
+    }
+    stamp(stay)
+    stays.push(stay)
+    return stay.id
+  },
+
+  async updateStay(stayId, patch) {
+    await delay()
+    const stay = requireStay(stayId)
+    Object.assign(stay, patch)
+    stamp(stay)
+  },
+
+  async deleteStay(stayId) {
+    await delay()
+    const index = stays.findIndex((s) => s.id === stayId)
+    if (index >= 0) stays.splice(index, 1)
   },
 }

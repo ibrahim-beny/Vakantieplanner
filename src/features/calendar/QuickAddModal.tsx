@@ -1,21 +1,18 @@
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
-import { DAY_TYPES, DAY_TYPE_KEYS } from '../../lib/dayTypes'
 import { formatFull } from '../../lib/dates'
-import type { DayType } from '../../lib/types'
 
-/** Dubbelklik op een lege kalendercel: snel inplannen met alleen locatie + dagtype. */
+/** Dubbelklik op een lege kalendercel: snel inplannen met alleen een locatie. */
 export function QuickAddModal({
   date,
   onConfirm,
   onClose,
 }: {
   date: string
-  onConfirm: (location: string, dayType: DayType) => Promise<void>
+  onConfirm: (location: string) => Promise<void>
   onClose: () => void
 }) {
   const [location, setLocation] = useState('')
-  const [dayType, setDayType] = useState<DayType>('chill')
   const [busy, setBusy] = useState(false)
 
   async function submit(e: FormEvent) {
@@ -23,7 +20,7 @@ export function QuickAddModal({
     if (!location.trim()) return
     setBusy(true)
     try {
-      await onConfirm(location.trim(), dayType)
+      await onConfirm(location.trim())
     } finally {
       setBusy(false)
     }
@@ -44,21 +41,6 @@ export function QuickAddModal({
           value={location}
           onChange={(e) => setLocation(e.target.value)}
         />
-        <label htmlFor="quickadd-daytype" className="field-label mt-4">
-          Dagtype
-        </label>
-        <select
-          id="quickadd-daytype"
-          className="field-input"
-          value={dayType}
-          onChange={(e) => setDayType(e.target.value as DayType)}
-        >
-          {DAY_TYPE_KEYS.map((key) => (
-            <option key={key} value={key}>
-              {DAY_TYPES[key].label}
-            </option>
-          ))}
-        </select>
         <button type="submit" disabled={busy} className="btn-primary mt-5 w-full text-[15px]">
           {busy ? 'Inplannen…' : 'Inplannen'}
         </button>

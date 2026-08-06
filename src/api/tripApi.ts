@@ -1,4 +1,4 @@
-import type { DayPatch, TripData } from '../lib/types'
+import type { DayPatch, StayPatch, TripData } from '../lib/types'
 
 /**
  * Datalaag-contract. Productie praat met Supabase (supabaseApi); in dev kan
@@ -20,4 +20,11 @@ export interface TripApi {
   /** Verschuift alle dagen vanaf fromDate met deltaDays (+/-). */
   shiftDays(tripId: string, fromDate: string, deltaDays: number): Promise<void>
   addComment(dayId: string, body: string): Promise<void>
+  /** Maakt een verblijf aan en geeft het nieuwe stay-id terug. */
+  createStay(
+    tripId: string,
+    fields: { location_name: string; start_date: string; end_date: string } & StayPatch,
+  ): Promise<string>
+  updateStay(stayId: string, patch: StayPatch): Promise<void>
+  deleteStay(stayId: string): Promise<void>
 }

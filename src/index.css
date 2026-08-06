@@ -32,9 +32,8 @@
   --color-outmonth: #f2ecdc;
 
   /* Tekstkleuren. muted is licht verdonkerd t.o.v. de handoff (#8A8072)
-     zodat kleine tekst WCAG AA (>=4.5:1) haalt op alle achtergronden,
-     incl. de lichtste dagtype-tint #F0DCAE. muted-soft is het origineel,
-     alleen voor grote/decoratieve tekst. */
+     zodat kleine tekst WCAG AA (>=4.5:1) haalt op alle achtergronden.
+     muted-soft is het origineel, alleen voor grote/decoratieve tekst. */
   --color-ink: #2a2420;
   --color-inkbody: #5c5548;
   --color-muted: #696157;

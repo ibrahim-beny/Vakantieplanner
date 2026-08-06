@@ -63,7 +63,6 @@ export default function App() {
     const newId = await mutations.createDay({
       date,
       location_name: lastDay?.location_name ?? 'Nieuwe stop',
-      day_type: 'chill',
       activities: [],
     })
     if (newId) setOpenDayId(newId)
@@ -84,11 +83,12 @@ export default function App() {
       )}
 
       {view === 'kalender' && (
-        <CalendarView days={data.days} onOpenDay={setOpenDayId} mutations={mutations} />
+        <CalendarView days={data.days} stays={data.stays} onOpenDay={setOpenDayId} mutations={mutations} />
       )}
       {view === 'tijdlijn' && (
         <TimelineView
           days={data.days}
+          stays={data.stays}
           members={data.members}
           mutations={mutations}
           onOpenDay={setOpenDayId}
@@ -98,18 +98,14 @@ export default function App() {
       )}
       {view === 'kaart' && <MapView days={data.days} onOpenDay={setOpenDayId} />}
       {view === 'budget' && (
-        <BudgetView
-          days={data.days}
-          members={data.members}
-          mutations={mutations}
-          onOpenDay={setOpenDayId}
-        />
+        <BudgetView stays={data.stays} members={data.members} mutations={mutations} />
       )}
 
       {openDay && (
         <DayDetailPanel
           day={openDay}
           members={data.members}
+          stays={data.stays}
           mutations={mutations}
           onClose={() => setOpenDayId(null)}
         />

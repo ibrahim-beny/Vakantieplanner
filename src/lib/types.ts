@@ -1,5 +1,3 @@
-export type DayType = 'chill' | 'licht' | 'gemiddeld' | 'zwaar' | 'vertrek' | 'aankomst'
-
 export interface Profile {
   id: string
   display_name: string
@@ -28,14 +26,6 @@ export interface TripDay {
   location_name: string
   lat: number | null
   lng: number | null
-  day_type: DayType
-  overnight_location: string | null
-  overnight_lat: number | null
-  overnight_lng: number | null
-  accommodation_booked: boolean
-  accommodation_booked_by: string | null
-  accommodation_paid_back: boolean
-  accommodation_cost: number | null
   activities: string[]
   drive_distance_km: number | null
   drive_time_hours: number | null
@@ -45,9 +35,27 @@ export interface TripDay {
   comments: DayComment[]
 }
 
+/** Een boeking (hotel/motel/cabin) die één of meerdere aaneengesloten nachten beslaat. */
+export interface TripStay {
+  id: string
+  trip_id: string
+  location_name: string
+  start_date: string // YYYY-MM-DD, eerste nacht
+  end_date: string // YYYY-MM-DD, laatste nacht (inclusief)
+  lat: number | null
+  lng: number | null
+  cost: number | null
+  booked: boolean
+  booked_by: string | null
+  paid_back: boolean
+  updated_by: string | null
+  updated_at: string
+}
+
 export interface TripData {
   trip: Trip
   days: TripDay[]
+  stays: TripStay[]
   members: Profile[]
 }
 
@@ -56,15 +64,14 @@ export type DayPatch = Partial<
   Omit<TripDay, 'id' | 'trip_id' | 'date' | 'comments' | 'updated_at' | 'updated_by'>
 >
 
+/** Bewerkbare velden van een verblijf. */
+export type StayPatch = Partial<Omit<TripStay, 'id' | 'trip_id' | 'updated_at' | 'updated_by'>>
+
 /** Velden die via kopieer/plak overgenomen kunnen worden. */
 export interface ClipboardDay {
   location_name: string
   lat: number | null
   lng: number | null
-  day_type: DayType
-  overnight_location: string | null
-  overnight_lat: number | null
-  overnight_lng: number | null
   activities: string[]
   drive_distance_km: number | null
   drive_time_hours: number | null

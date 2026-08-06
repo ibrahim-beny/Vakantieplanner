@@ -1,55 +1,39 @@
-import { formatDayMonth } from '../../lib/dates'
+import { useState } from 'react'
+import { formatRange } from '../../lib/dates'
+import { formatEuro } from '../../lib/format'
+import { nightsOf } from '../../lib/stays'
 import { bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
 import { getStoredProfileId } from '../../lib/identity'
-import type { Profile, TripDay } from '../../lib/types'
+import type { Profile, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
+import { StayForm } from './StayForm'
 
-const formatEuro = (n: number) =>
-  `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-
-/** Overzicht van alle overnachtingskosten en de onderlinge verrekening. */
+/** Overzicht van alle verblijven, hun kosten en de onderlinge verrekening. */
 export function BudgetView({
-  days,
+  stays,
   members,
   mutations,
-  onOpenDay,
 }: {
-  days: TripDay[]
+  stays: TripStay[]
   members: Profile[]
   mutations: TripMutations
-  onOpenDay: (id: string) => void
 }) {
+  const [editingStay, setEditingStay] = useState<TripStay | null | undefined>(undefined)
+
   const memberName = (id: string | null) =>
     members.find((m) => m.id === id)?.display_name ?? 'onbekend'
 
-  function cycleBooking(day: TripDay) {
-    void mutations.updateDay(day.id, nextBookingPatch(day, getStoredProfileId()))
+  function cycleBooking(stay: TripStay) {
+    void mutations.updateStay(stay.id, nextBookingPatch(stay, getStoredProfileId()))
   }
 
-  const rows = days.filter((d) => d.overnight_location || d.accommodation_cost != null)
-  const total = rows.reduce((sum, d) => sum + (d.accommodation_cost ?? 0), 0)
+  const sortedStays = [...stays].sort((a, b) => a.start_date.localeCompare(b.start_date))
+  const total = stays.reduce((sum, s) => sum + (s.cost ?? 0), 0)
   const perMember = members.map((m) => ({
     member: m,
-    paid: rows
-      .filter((d) => d.accommodation_booked_by === m.id)
-      .reduce((sum, d) => sum + (d.accommodation_cost ?? 0), 0),
+    paid: stays.filter((s) => s.booked_by === m.id).reduce((sum, s) => sum + (s.cost ?? 0), 0),
   }))
   const fairShare = members.length > 0 ? total / members.length : 0
-
-  let settlementLabel: string | null = null
-  if (members.length === 2 && total > 0) {
-    const [a, b] = perMember
-    const diff = a.paid - b.paid
-    if (Math.abs(diff) > 0.005) {
-      const owed = Math.abs(diff) / 2
-      settlementLabel =
-        diff > 0
-          ? `${a.member.display_name} krijgt nog ${formatEuro(owed)} van ${b.member.display_name}`
-          : `${b.member.display_name} krijgt nog ${formatEuro(owed)} van ${a.member.display_name}`
-    } else {
-      settlementLabel = 'Onderling verrekend — niemand hoeft nog iets te betalen'
-    }
-  }
 
   return (
     <section className="mx-auto w-full max-w-[960px]" style={{ padding: 'clamp(16px, 4vw, 36px)' }}>
@@ -61,15 +45,7 @@ export function BudgetView({
               {formatEuro(total)}
             </span>
           </p>
-          {perMember.map(({ member, paid }) => (
-            <p key={member.id} className="font-mono text-[13px] uppercase tracking-[0.1em] text-muted">
-              Voorgeschoten door {member.display_name}
-              <span className="mt-1 block text-[22px] font-bold normal-case tracking-normal text-ink">
-                {formatEuro(paid)}
-              </span>
-            </p>
-          ))}
-          {members.length !== 2 && total > 0 && (
+          {total > 0 && (
             <p className="font-mono text-[13px] uppercase tracking-[0.1em] text-muted">
               Eerlijk aandeel per persoon
               <span className="mt-1 block text-[22px] font-bold normal-case tracking-normal text-ink">
@@ -78,40 +54,54 @@ export function BudgetView({
             </p>
           )}
         </div>
-        {settlementLabel && (
-          <p className="border-t border-edge pt-3 font-mono text-[14px] text-diesel">
-            {settlementLabel}
-          </p>
+        {total > 0 && (
+          <div className="flex flex-col gap-1.5 border-t border-edge pt-3">
+            {perMember.map(({ member, paid }) => {
+              const diff = paid - fairShare
+              return (
+                <p key={member.id} className="font-mono text-[13px] text-inkbody">
+                  {member.display_name} betaalde {formatEuro(paid)}
+                  {Math.abs(diff) > 0.005 && (
+                    <span className={diff > 0 ? 'text-sage-btn' : 'text-canyon'}>
+                      {' '}
+                      ({diff > 0 ? '+' : ''}
+                      {formatEuro(diff)} t.o.v. eerlijk aandeel)
+                    </span>
+                  )}
+                </p>
+              )
+            })}
+          </div>
         )}
       </div>
 
       <div className="flex flex-col gap-3">
-        {rows.length === 0 && (
-          <p className="font-mono text-[13px] text-muted">Nog geen overnachtingen met kosten of locatie.</p>
+        {sortedStays.length === 0 && (
+          <p className="font-mono text-[13px] text-muted">Nog geen verblijven toegevoegd.</p>
         )}
-        {rows.map((day) => {
-          const badge = bookingBadge(day)
-          const { day: dayNr, month } = formatDayMonth(day.date)
+        {sortedStays.map((stay) => {
+          const badge = bookingBadge(stay)
+          const nights = nightsOf(stay)
           return (
             <button
-              key={day.id}
+              key={stay.id}
               type="button"
-              onClick={() => onOpenDay(day.id)}
+              onClick={() => setEditingStay(stay)}
               className="flex flex-wrap items-center gap-x-5 gap-y-2 border-[1.5px] border-edge bg-card px-[18px] py-4 text-left transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-[0_4px_14px_rgba(42,36,32,0.1)]"
             >
-              <span className="min-w-[64px]">
-                <span className="block font-display text-[26px] font-bold leading-none text-ink">
-                  {dayNr}
+              <span className="min-w-[130px]">
+                <span className="block font-mono text-[13px] font-bold leading-none text-ink">
+                  {formatRange(stay.start_date, stay.end_date)}
                 </span>
-                <span className="block font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
-                  {month}
+                <span className="mt-1 block font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                  {nights} nacht{nights === 1 ? '' : 'en'}
                 </span>
               </span>
 
               <span className="min-w-0 flex-[3] basis-52">
                 <span className="flex flex-wrap items-center gap-2.5">
                   <span className="text-[18px] font-bold leading-snug text-ink">
-                    {day.overnight_location || day.location_name}
+                    {stay.location_name}
                   </span>
                   <span
                     role="button"
@@ -131,14 +121,14 @@ export function BudgetView({
                     }}
                     onClick={(e) => {
                       e.stopPropagation()
-                      cycleBooking(day)
+                      cycleBooking(stay)
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
                         e.stopPropagation()
-                        cycleBooking(day)
+                        cycleBooking(stay)
                       }
                     }}
                   >
@@ -146,17 +136,37 @@ export function BudgetView({
                   </span>
                 </span>
                 <span className="mt-1 block text-[13px] text-muted">
-                  Betaald door {memberName(day.accommodation_booked_by)}
+                  Betaald door {memberName(stay.booked_by)}
                 </span>
               </span>
 
-              <span className="flex-1 basis-36 text-right font-mono text-[16px] font-bold text-ink">
-                {day.accommodation_cost != null ? formatEuro(day.accommodation_cost) : '—'}
+              <span className="flex-1 basis-36 text-right font-mono">
+                <span className="block text-[16px] font-bold text-ink">
+                  {stay.cost != null ? formatEuro(stay.cost) : '—'}
+                </span>
+                {stay.cost != null && (
+                  <span className="block text-[11px] text-muted">
+                    {formatEuro(stay.cost / nights)} / nacht
+                  </span>
+                )}
               </span>
             </button>
           )
         })}
       </div>
+
+      <button type="button" className="btn-diesel mt-4 w-full" onClick={() => setEditingStay(null)}>
+        + Verblijf toevoegen
+      </button>
+
+      {editingStay !== undefined && (
+        <StayForm
+          stay={editingStay}
+          members={members}
+          mutations={mutations}
+          onClose={() => setEditingStay(undefined)}
+        />
+      )}
     </section>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { DAY_TYPES, DAY_TYPE_KEYS } from '../../lib/dayTypes'
-import { bookingBadge } from '../../lib/bookingBadge'
-import type { DayType, Profile, TripDay } from '../../lib/types'
+import { formatEuro } from '../../lib/format'
+import { findStayForDate, nightsOf } from '../../lib/stays'
+import type { Profile, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { ActivityTagInput } from './ActivityTagInput'
 import { CommentThread } from './CommentThread'
@@ -11,10 +11,6 @@ interface Draft {
   location_name: string
   lat: string
   lng: string
-  overnight_location: string
-  overnight_lat: string
-  overnight_lng: string
-  accommodation_cost: string
   activities: string[]
   drive_time_hours: string
   drive_distance_km: string
@@ -26,10 +22,6 @@ function toDraft(day: TripDay): Draft {
     location_name: day.location_name,
     lat: day.lat?.toString() ?? '',
     lng: day.lng?.toString() ?? '',
-    overnight_location: day.overnight_location ?? '',
-    overnight_lat: day.overnight_lat?.toString() ?? '',
-    overnight_lng: day.overnight_lng?.toString() ?? '',
-    accommodation_cost: day.accommodation_cost?.toString() ?? '',
     activities: [...day.activities],
     drive_time_hours: day.drive_time_hours?.toString() ?? '',
     drive_distance_km: day.drive_distance_km?.toString() ?? '',
@@ -50,11 +42,13 @@ const toNumber = (s: string): number | null => {
 export function DayDetailPanel({
   day,
   members,
+  stays,
   mutations,
   onClose,
 }: {
   day: TripDay
   members: Profile[]
+  stays: TripStay[]
   mutations: TripMutations
   onClose: () => void
 }) {
@@ -97,10 +91,6 @@ export function DayDetailPanel({
       location_name: draft.location_name.trim() || day.location_name,
       lat: toNumber(draft.lat),
       lng: toNumber(draft.lng),
-      overnight_location: draft.overnight_location.trim() || null,
-      overnight_lat: toNumber(draft.overnight_lat),
-      overnight_lng: toNumber(draft.overnight_lng),
-      accommodation_cost: toNumber(draft.accommodation_cost),
       drive_time_hours: toNumber(draft.drive_time_hours),
       drive_distance_km: toNumber(draft.drive_distance_km),
       notes: draft.notes.trim() || null,
@@ -109,10 +99,6 @@ export function DayDetailPanel({
       patch.location_name !== day.location_name ||
       patch.lat !== day.lat ||
       patch.lng !== day.lng ||
-      patch.overnight_location !== day.overnight_location ||
-      patch.overnight_lat !== day.overnight_lat ||
-      patch.overnight_lng !== day.overnight_lng ||
-      patch.accommodation_cost !== day.accommodation_cost ||
       patch.drive_time_hours !== day.drive_time_hours ||
       patch.drive_distance_km !== day.drive_distance_km ||
       patch.notes !== day.notes
@@ -133,24 +119,6 @@ export function DayDetailPanel({
     })
   }
 
-  /** Vrij typen maakt de vorige, geverifieerde Nominatim-coördinaat ongeldig. */
-  function changeOvernightText(text: string) {
-    set({ overnight_location: text, overnight_lat: '', overnight_lng: '' })
-  }
-
-  function pickOvernightPlace(place: { label: string; lat: number; lng: number }) {
-    set({
-      overnight_location: place.label,
-      overnight_lat: place.lat.toString(),
-      overnight_lng: place.lng.toString(),
-    })
-    void mutations.updateDay(day.id, {
-      overnight_location: place.label,
-      overnight_lat: place.lat,
-      overnight_lng: place.lng,
-    })
-  }
-
   function changeDate(newDate: string) {
     if (!newDate || newDate === day.date) return
     setDate(newDate)
@@ -158,7 +126,7 @@ export function DayDetailPanel({
   }
 
   const editorName = members.find((m) => m.id === day.updated_by)?.display_name
-  const bookingBadgeDef = bookingBadge(day)
+  const stay = findStayForDate(stays, day.date)
 
   return (
     <div className="fixed inset-0 z-40">
@@ -212,131 +180,18 @@ export function DayDetailPanel({
           </div>
 
           <div>
-            <label htmlFor="day-type" className="field-label">
-              Dagtype
-            </label>
-            <select
-              id="day-type"
-              className="field-input"
-              value={day.day_type}
-              onChange={(e) => void mutations.updateDay(day.id, { day_type: e.target.value as DayType })}
-            >
-              {DAY_TYPE_KEYS.map((key) => (
-                <option key={key} value={key}>
-                  {DAY_TYPES[key].label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="day-overnight" className="field-label">
-              Overnachting
-            </label>
-            <PlaceSearchInput
-              id="day-overnight"
-              value={draft.overnight_location}
-              onChange={changeOvernightText}
-              onBlur={commitText}
-              onPlaceSelected={pickOvernightPlace}
-            />
-            <p className="mt-1.5 font-mono text-[11px] text-muted">
-              Naam van hotel/motel — alleen ter naslag, telt niet mee voor de kaart.
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="day-cost" className="field-label">
-              Kosten (€)
-            </label>
-            <input
-              id="day-cost"
-              inputMode="decimal"
-              className="field-input font-mono text-[14px]"
-              value={draft.accommodation_cost}
-              onChange={(e) => set({ accommodation_cost: e.target.value })}
-              onBlur={commitText}
-            />
-          </div>
-
-          <div>
-            <label className="flex cursor-pointer items-center gap-2.5">
-              <input
-                type="checkbox"
-                className="accent-(--color-canyon)"
-                checked={day.accommodation_booked}
-                onChange={(e) => {
-                  const checked = e.target.checked
-                  void mutations.updateDay(
-                    day.id,
-                    checked
-                      ? { accommodation_booked: true }
-                      : {
-                          accommodation_booked: false,
-                          accommodation_booked_by: null,
-                          accommodation_paid_back: false,
-                        },
-                  )
-                }}
-              />
-              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
-                Slaapplek geboekt
-              </span>
-              {bookingBadgeDef && (
-                <span
-                  className="px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.05em]"
-                  style={{ background: bookingBadgeDef.bg, color: bookingBadgeDef.fg }}
-                >
-                  {bookingBadgeDef.glyph} {bookingBadgeDef.label}
-                </span>
-              )}
-            </label>
-
-            {day.accommodation_booked && (
-              <div className="mt-3 flex flex-col gap-3 border-l-[1.5px] border-edge pl-3">
-                <div>
-                  <label htmlFor="day-booked-by" className="field-label">
-                    Geboekt door
-                  </label>
-                  <select
-                    id="day-booked-by"
-                    className="field-input"
-                    value={day.accommodation_booked_by ?? ''}
-                    onChange={(e) =>
-                      void mutations.updateDay(day.id, {
-                        accommodation_booked_by: e.target.value || null,
-                        ...(e.target.value ? {} : { accommodation_paid_back: false }),
-                      })
-                    }
-                  >
-                    <option value="">Kies wie...</option>
-                    {members.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.display_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <label
-                  className={`flex items-center gap-2.5 ${
-                    day.accommodation_booked_by ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="accent-(--color-sage)"
-                    checked={day.accommodation_paid_back}
-                    disabled={!day.accommodation_booked_by}
-                    onChange={(e) =>
-                      void mutations.updateDay(day.id, { accommodation_paid_back: e.target.checked })
-                    }
-                  />
-                  <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
-                    Terugbetaald (Tikkie ontvangen)
-                  </span>
-                </label>
-              </div>
+            <span className="field-label">Verblijf</span>
+            {stay ? (
+              <p className="border-[1.5px] border-edge bg-[rgba(42,36,32,0.03)] px-3 py-2.5 font-mono text-[13px] text-inkbody">
+                {stay.location_name} — {nightsOf(stay)} nacht{nightsOf(stay) === 1 ? '' : 'en'}
+                {stay.cost != null && <> · {formatEuro(stay.cost)}</>}
+                <br />
+                <span className="text-[11px] text-muted">Bewerk dit verblijf in de Budget-tab.</span>
+              </p>
+            ) : (
+              <p className="font-mono text-[11px] text-muted">
+                Geen verblijf gekoppeld aan deze dag — voeg er een toe in de Budget-tab.
+              </p>
             )}
           </div>
 

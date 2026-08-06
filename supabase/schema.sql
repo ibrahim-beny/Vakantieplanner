@@ -38,14 +38,6 @@ create table trip_days (
   location_name text not null,
   lat double precision,
   lng double precision,
-  day_type text not null check (day_type in ('chill', 'licht', 'gemiddeld', 'zwaar', 'vertrek', 'aankomst')),
-  overnight_location text,
-  overnight_lat double precision,
-  overnight_lng double precision,
-  accommodation_booked boolean not null default false,
-  accommodation_booked_by uuid references profiles(id),
-  accommodation_paid_back boolean not null default false,
-  accommodation_cost numeric,
   activities text[], -- losse activiteiten, in de UI als tags toe te voegen/verwijderen
   drive_distance_km numeric,
   drive_time_hours numeric, -- in uren (bijv. 3.5, 8.5), matcht "Rijtijd (u)" 1-op-1
@@ -53,6 +45,24 @@ create table trip_days (
   updated_by uuid references profiles(id),
   updated_at timestamptz default now(),
   unique (trip_id, date)
+);
+
+-- Een verblijf (hotel/motel/cabin) dat één of meerdere aaneengesloten nachten
+-- beslaat, met één totaalbedrag — losstaand van de losse dagen.
+create table trip_stays (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid references trips(id) on delete cascade,
+  location_name text not null,
+  start_date date not null,
+  end_date date not null,
+  lat double precision,
+  lng double precision,
+  cost numeric,
+  booked boolean not null default false,
+  booked_by uuid references profiles(id),
+  paid_back boolean not null default false,
+  updated_by uuid references profiles(id),
+  updated_at timestamptz default now()
 );
 
 -- Reacties per dag (simpel, ongenest)
@@ -64,7 +74,7 @@ create table trip_day_comments (
   created_at timestamptz default now()
 );
 
--- updated_at automatisch bijwerken bij elke wijziging aan een dag
+-- updated_at automatisch bijwerken bij elke wijziging aan een dag/verblijf
 create or replace function set_trip_day_updated_at()
 returns trigger language plpgsql as $$
 begin
@@ -75,6 +85,10 @@ $$;
 
 create trigger trip_days_updated_at
   before update on trip_days
+  for each row execute function set_trip_day_updated_at();
+
+create trigger trip_stays_updated_at
+  before update on trip_stays
   for each row execute function set_trip_day_updated_at();
 
 -- ============================================================
@@ -89,4 +103,4 @@ create trigger trip_days_updated_at
 -- Realtime: laat de app wijzigingen van andere gebruikers direct
 -- binnenkrijgen (via websockets), zonder dat iemand hoeft te verversen.
 -- ============================================================
-alter publication supabase_realtime add table trip_days, trip_day_comments;
+alter publication supabase_realtime add table trip_days, trip_day_comments, trip_stays;

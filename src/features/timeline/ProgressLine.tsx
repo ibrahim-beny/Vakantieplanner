@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { DAY_TYPES } from '../../lib/dayTypes'
 import { formatDayMonth } from '../../lib/dates'
 import type { TripDay } from '../../lib/types'
 
@@ -7,7 +6,7 @@ const HEIGHT = 56
 
 /**
  * De signature handgetekende routelijn boven de tijdlijn: een golvende,
- * gestippelde lijn met per dag een klikbare tick in de dagtype-kleur.
+ * gestippelde lijn met per dag een klikbare tick.
  * De ticks staan als HTML-knoppen bovenop de SVG zodat ze rond blijven
  * (de SVG rekt mee met de viewport) en toetsenbord-focusbaar zijn.
  */
@@ -57,7 +56,6 @@ export function ProgressLine({
         <path d={path} fill="none" stroke="#2C3B4A" strokeWidth="2" strokeDasharray="5 6" opacity="0.4" />
       </svg>
       {points.map(({ day, x, y }) => {
-        const dt = DAY_TYPES[day.day_type]
         const { day: dayNr, month } = formatDayMonth(day.date)
         return (
           <button
@@ -66,8 +64,8 @@ export function ProgressLine({
             title={`${dayNr} ${month} — ${day.location_name}`}
             aria-label={`${dayNr} ${month} — ${day.location_name}`}
             onClick={() => onOpenDay(day.id)}
-            className="absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform hover:scale-125"
-            style={{ left: `${x}%`, top: y, background: dt.bg, border: `2px solid ${dt.fg}` }}
+            className="absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#D6D0E3] transition-transform hover:scale-125"
+            style={{ left: `${x}%`, top: y, border: '2px solid #3D3457' }}
           />
         )
       })}

@@ -1,4 +1,4 @@
-import type { TripDay } from './types'
+import type { TripStay } from './types'
 
 export type BookingStatus = 'booked-unpaid' | 'booked-paid'
 
@@ -29,29 +29,29 @@ export const BOOKING_BADGES: BookingBadgeDef[] = [
 ]
 
 export function bookingBadge(
-  day: Pick<TripDay, 'accommodation_booked' | 'accommodation_paid_back'>,
+  stay: Pick<TripStay, 'booked' | 'paid_back'>,
 ): BookingBadgeDef | null {
-  if (!day.accommodation_booked) return null
-  return day.accommodation_paid_back ? BOOKING_BADGES[1] : BOOKING_BADGES[0]
+  if (!stay.booked) return null
+  return stay.paid_back ? BOOKING_BADGES[1] : BOOKING_BADGES[0]
 }
 
 /**
- * Klik-cyclus voor het snelle vinkje in kalender/timeline:
+ * Klik-cyclus voor het snelle vinkje in kalender/timeline/budget:
  * leeg -> geboekt -> geboekt+terugbetaald -> leeg.
  */
 export function nextBookingPatch(
-  day: Pick<TripDay, 'accommodation_booked' | 'accommodation_paid_back'>,
+  stay: Pick<TripStay, 'booked' | 'paid_back'>,
   currentProfileId: string | null,
-): Partial<Pick<TripDay, 'accommodation_booked' | 'accommodation_booked_by' | 'accommodation_paid_back'>> {
-  if (!day.accommodation_booked) {
+): Partial<Pick<TripStay, 'booked' | 'booked_by' | 'paid_back'>> {
+  if (!stay.booked) {
     return {
-      accommodation_booked: true,
-      accommodation_booked_by: currentProfileId,
-      accommodation_paid_back: false,
+      booked: true,
+      booked_by: currentProfileId,
+      paid_back: false,
     }
   }
-  if (!day.accommodation_paid_back) {
-    return { accommodation_paid_back: true }
+  if (!stay.paid_back) {
+    return { paid_back: true }
   }
-  return { accommodation_booked: false, accommodation_booked_by: null, accommodation_paid_back: false }
+  return { booked: false, booked_by: null, paid_back: false }
 }

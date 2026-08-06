@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
-import type { DayPatch, TripData } from '../lib/types'
+import type { DayPatch, StayPatch, TripData } from '../lib/types'
 
 /** Zelfde mock-opt-in als src/api/index.ts: geen Supabase-client laden zonder project. */
 const useMock = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === '1'
@@ -12,6 +12,11 @@ export interface TripMutations {
   deleteDay(dayId: string): Promise<void>
   shiftDays(fromDate: string, deltaDays: number): Promise<void>
   addComment(dayId: string, body: string): Promise<void>
+  createStay(
+    fields: { location_name: string; start_date: string; end_date: string } & StayPatch,
+  ): Promise<string | null>
+  updateStay(stayId: string, patch: StayPatch): Promise<void>
+  deleteStay(stayId: string): Promise<void>
 }
 
 /**
@@ -67,6 +72,11 @@ export function useTripData() {
           { event: '*', schema: 'public', table: 'trip_day_comments' },
           debouncedRefetch,
         )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'trip_stays', filter: `trip_id=eq.${tripId}` },
+          debouncedRefetch,
+        )
         .subscribe()
       unsubscribe = () => void supabase.removeChannel(channel)
     })
@@ -109,6 +119,16 @@ export function useTripData() {
       await run(() => api.shiftDays(tripId, fromDate, deltaDays))
     },
     addComment: (dayId, body) => run(() => api.addComment(dayId, body)),
+    createStay: async (fields) => {
+      if (!tripId) return null
+      let newId: string | null = null
+      await run(async () => {
+        newId = await api.createStay(tripId, fields)
+      })
+      return newId
+    },
+    updateStay: (stayId, patch) => run(() => api.updateStay(stayId, patch)),
+    deleteStay: (stayId) => run(() => api.deleteStay(stayId)),
   }
 
   return { data, loading, error, refetch, mutations }
