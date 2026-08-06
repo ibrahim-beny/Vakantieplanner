@@ -1,0 +1,235 @@
+@import '@fontsource/big-shoulders-display/600.css';
+@import '@fontsource/big-shoulders-display/700.css';
+@import '@fontsource/big-shoulders-display/800.css';
+@import '@fontsource/source-sans-3/400.css';
+@import '@fontsource/source-sans-3/500.css';
+@import '@fontsource/source-sans-3/600.css';
+@import '@fontsource/source-sans-3/400-italic.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+  --font-body: 'Source Sans 3', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Kernkleuren uit de design-handoff */
+  --color-canyon: #b5502f;
+  --color-canyon-dark: #8a3d24;
+  --color-sage: #74815f;
+  /* Sage-knoppen gebruiken de donkere hover-tint als basis zodat witte
+     knoptekst AA haalt (wit op #74815F is 3.98:1). */
+  --color-sage-btn: #5c6749;
+  --color-sage-btn-dark: #4a5339;
+  --color-sand: #e4d7b8;
+  --color-diesel: #2c3b4a;
+  --color-diesel-dark: #1c2731;
+  --color-gold: #d2a03c;
+  --color-cream: #f7f1e3;
+  --color-card: #fcfaf1;
+  --color-edge: #d8cba9;
+  --color-outmonth: #f2ecdc;
+
+  /* Tekstkleuren. muted is licht verdonkerd t.o.v. de handoff (#8A8072)
+     zodat kleine tekst WCAG AA (>=4.5:1) haalt op alle achtergronden,
+     incl. de lichtste dagtype-tint #F0DCAE. muted-soft is het origineel,
+     alleen voor grote/decoratieve tekst. */
+  --color-ink: #2a2420;
+  --color-inkbody: #5c5548;
+  --color-muted: #696157;
+  --color-muted-soft: #8a8072;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-body);
+  }
+  body {
+    background: var(--color-cream);
+    color: var(--color-ink);
+    font-size: 15px;
+  }
+  /* Flat poster-esthetiek: nergens afgeronde hoeken (avatars/pins
+     zetten expliciet rounded-full). */
+  button,
+  input,
+  select,
+  textarea {
+    border-radius: 0;
+    font: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-diesel);
+    outline-offset: 1px;
+  }
+  a {
+    color: var(--color-canyon);
+  }
+  a:hover {
+    color: var(--color-canyon-dark);
+  }
+}
+
+@layer components {
+  .field-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-muted);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .field-input {
+    width: 100%;
+    border: 1.5px solid var(--color-edge);
+    background: #fff;
+    padding: 10px 12px;
+    font-size: 15px;
+    color: var(--color-ink);
+  }
+  .btn-primary {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--color-canyon);
+    color: var(--color-card);
+    padding: 12px 20px;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-primary:hover {
+    background: var(--color-canyon-dark);
+  }
+  .btn-diesel {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--color-diesel);
+    color: var(--color-card);
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-diesel:hover {
+    background: var(--color-diesel-dark);
+  }
+  .btn-outline {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: transparent;
+    border: 1.5px solid var(--color-diesel);
+    color: var(--color-diesel);
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .btn-outline:hover {
+    background: var(--color-diesel);
+    color: var(--color-card);
+  }
+  .btn-danger-outline {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: transparent;
+    border: 1.5px solid var(--color-canyon);
+    color: var(--color-canyon);
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .btn-danger-outline:hover {
+    background: var(--color-canyon);
+    color: var(--color-card);
+  }
+}
+
+/* Paneel-animaties (Dag-detailpaneel + scrim) */
+@keyframes panel-slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes scrim-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-panel {
+  animation: panel-slide-in 0.25s ease;
+}
+.animate-scrim {
+  animation: scrim-fade-in 0.2s ease;
+}
+.animate-fade {
+  animation: fade-in 0.4s ease;
+}
+
+/* Leaflet sober houden, passend bij de rest van de app */
+.leaflet-container {
+  background: var(--color-sand);
+  font-family: var(--font-mono);
+}
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(252, 250, 241, 0.8);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 5px;
+}
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--color-muted);
+}
+.map-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.map-pin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--color-canyon);
+  box-shadow:
+    0 0 0 2px var(--color-card),
+    0 0 0 3.5px rgba(44, 59, 74, 0.9);
+  transition: width 0.15s ease, height 0.15s ease;
+}
+.map-pin--active .map-pin-dot {
+  width: 18px;
+  height: 18px;
+}
+.map-pin-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-ink);
+  background: rgba(252, 250, 241, 0.85);
+  border: 1px solid var(--color-edge);
+  padding: 1px 5px;
+  white-space: nowrap;
+}
