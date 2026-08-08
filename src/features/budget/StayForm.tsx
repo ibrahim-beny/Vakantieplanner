@@ -10,16 +10,22 @@ interface Draft {
   start_date: string
   end_date: string
   cost: string
+  booked: boolean
+  booked_by: string
+  paid_back: boolean
 }
 
-function toDraft(stay: TripStay | null): Draft {
+function toDraft(stay: TripStay | null, initialDates?: { start_date: string; end_date: string }): Draft {
   return {
     location_name: stay?.location_name ?? '',
     lat: stay?.lat?.toString() ?? '',
     lng: stay?.lng?.toString() ?? '',
-    start_date: stay?.start_date ?? '',
-    end_date: stay?.end_date ?? '',
+    start_date: stay?.start_date ?? initialDates?.start_date ?? '',
+    end_date: stay?.end_date ?? initialDates?.end_date ?? '',
     cost: stay?.cost?.toString() ?? '',
+    booked: stay?.booked ?? false,
+    booked_by: stay?.booked_by ?? '',
+    paid_back: stay?.paid_back ?? false,
   }
 }
 
@@ -35,13 +41,16 @@ export function StayForm({
   members,
   mutations,
   onClose,
+  initialDates,
 }: {
   stay: TripStay | null
   members: Profile[]
   mutations: TripMutations
   onClose: () => void
+  /** Vooringevulde van/tot-datums bij het aanmaken vanuit een dagselectie (genegeerd bij bewerken). */
+  initialDates?: { start_date: string; end_date: string }
 }) {
-  const [draft, setDraft] = useState<Draft>(() => toDraft(stay))
+  const [draft, setDraft] = useState<Draft>(() => toDraft(stay, initialDates))
   const [busy, setBusy] = useState(false)
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
 
@@ -65,9 +74,12 @@ export function StayForm({
     setBusy(true)
     try {
       if (isNew) {
-        await mutations.createStay(
-          buildPatch() as { location_name: string; start_date: string; end_date: string } & StayPatch,
-        )
+        await mutations.createStay({
+          ...(buildPatch() as { location_name: string; start_date: string; end_date: string } & StayPatch),
+          booked: draft.booked,
+          booked_by: draft.booked ? draft.booked_by || null : null,
+          paid_back: draft.booked && draft.booked_by ? draft.paid_back : false,
+        })
       } else {
         await mutations.updateStay(stay.id, buildPatch())
       }
@@ -172,7 +184,72 @@ export function StayForm({
             />
           </div>
 
-          {!isNew && (
+          {isNew ? (
+            <div>
+              <label className="flex cursor-pointer items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  className="accent-(--color-canyon)"
+                  checked={draft.booked}
+                  onChange={(e) =>
+                    set(
+                      e.target.checked
+                        ? { booked: true }
+                        : { booked: false, booked_by: '', paid_back: false },
+                    )
+                  }
+                />
+                <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                  Geboekt
+                </span>
+              </label>
+
+              {draft.booked && (
+                <div className="mt-3 flex flex-col gap-3 border-l-[1.5px] border-edge pl-3">
+                  <div>
+                    <label htmlFor="stay-booked-by" className="field-label">
+                      Geboekt door
+                    </label>
+                    <select
+                      id="stay-booked-by"
+                      className="field-input"
+                      value={draft.booked_by}
+                      onChange={(e) =>
+                        set({
+                          booked_by: e.target.value,
+                          ...(e.target.value ? {} : { paid_back: false }),
+                        })
+                      }
+                    >
+                      <option value="">Kies wie...</option>
+                      {members.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.display_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <label
+                    className={`flex items-center gap-2.5 ${
+                      draft.booked_by ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-(--color-sage)"
+                      checked={draft.paid_back}
+                      disabled={!draft.booked_by}
+                      onChange={(e) => set({ paid_back: e.target.checked })}
+                    />
+                    <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                      Terugbetaald (Tikkie ontvangen)
+                    </span>
+                  </label>
+                </div>
+              )}
+            </div>
+          ) : (
             <div>
               <label className="flex cursor-pointer items-center gap-2.5">
                 <input
