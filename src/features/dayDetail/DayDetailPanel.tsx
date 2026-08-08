@@ -4,7 +4,6 @@ import { findStayForDate, nightsOf } from '../../lib/stays'
 import type { Profile, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { ActivityTagInput } from './ActivityTagInput'
-import { CommentThread } from './CommentThread'
 import { PlaceSearchInput } from './PlaceSearchInput'
 
 interface Draft {
@@ -12,8 +11,6 @@ interface Draft {
   lat: string
   lng: string
   activities: string[]
-  drive_time_hours: string
-  drive_distance_km: string
   notes: string
 }
 
@@ -23,8 +20,6 @@ function toDraft(day: TripDay): Draft {
     lat: day.lat?.toString() ?? '',
     lng: day.lng?.toString() ?? '',
     activities: [...day.activities],
-    drive_time_hours: day.drive_time_hours?.toString() ?? '',
-    drive_distance_km: day.drive_distance_km?.toString() ?? '',
     notes: day.notes ?? '',
   }
 }
@@ -91,16 +86,12 @@ export function DayDetailPanel({
       location_name: draft.location_name.trim() || day.location_name,
       lat: toNumber(draft.lat),
       lng: toNumber(draft.lng),
-      drive_time_hours: toNumber(draft.drive_time_hours),
-      drive_distance_km: toNumber(draft.drive_distance_km),
       notes: draft.notes.trim() || null,
     }
     const changed =
       patch.location_name !== day.location_name ||
       patch.lat !== day.lat ||
       patch.lng !== day.lng ||
-      patch.drive_time_hours !== day.drive_time_hours ||
-      patch.drive_distance_km !== day.drive_distance_km ||
       patch.notes !== day.notes
     if (changed) void mutations.updateDay(day.id, patch)
   }
@@ -207,35 +198,6 @@ export function DayDetailPanel({
             />
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label htmlFor="day-hours" className="field-label">
-                Rijtijd (u)
-              </label>
-              <input
-                id="day-hours"
-                inputMode="decimal"
-                className="field-input font-mono text-[14px]"
-                value={draft.drive_time_hours}
-                onChange={(e) => set({ drive_time_hours: e.target.value })}
-                onBlur={commitText}
-              />
-            </div>
-            <div className="flex-1">
-              <label htmlFor="day-km" className="field-label">
-                Afstand (km)
-              </label>
-              <input
-                id="day-km"
-                inputMode="decimal"
-                className="field-input font-mono text-[14px]"
-                value={draft.drive_distance_km}
-                onChange={(e) => set({ drive_distance_km: e.target.value })}
-                onBlur={commitText}
-              />
-            </div>
-          </div>
-
           <div>
             <label htmlFor="day-notes" className="field-label">
               Notitie
@@ -253,14 +215,6 @@ export function DayDetailPanel({
           {editorName && (
             <p className="font-mono text-[11.5px] text-muted">Laatst bewerkt door {editorName}</p>
           )}
-
-          <hr className="border-edge" />
-
-          <CommentThread
-            day={day}
-            members={members}
-            onAdd={(body) => mutations.addComment(day.id, body)}
-          />
 
           <div className="mt-2 border-t border-edge pt-4">
             <button

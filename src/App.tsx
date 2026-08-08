@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useIdentity } from './features/identity/useIdentity'
 import { WhoAmIScreen } from './features/identity/WhoAmIScreen'
-import { Header, SummaryBar, type View } from './components/Header'
+import { Header, type View } from './components/Header'
 import { CalendarView } from './features/calendar/CalendarView'
 import { TimelineView } from './features/timeline/TimelineView'
 import { MapView } from './features/map/MapView'
@@ -71,7 +71,6 @@ export default function App() {
   return (
     <div className="min-h-dvh bg-cream">
       <Header data={data} currentProfile={currentProfile} view={view} onViewChange={setView} />
-      <SummaryBar data={data} />
 
       {error && (
         <p
@@ -83,7 +82,13 @@ export default function App() {
       )}
 
       {view === 'kalender' && (
-        <CalendarView days={data.days} stays={data.stays} onOpenDay={setOpenDayId} mutations={mutations} />
+        <CalendarView
+          days={data.days}
+          stays={data.stays}
+          members={data.members}
+          onOpenDay={setOpenDayId}
+          mutations={mutations}
+        />
       )}
       {view === 'tijdlijn' && (
         <TimelineView

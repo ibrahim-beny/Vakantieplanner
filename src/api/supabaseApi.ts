@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase'
 import { addDaysISO } from '../lib/dates'
 import { getStoredProfileId } from '../lib/identity'
 import type { TripApi } from './tripApi'
-import type { DayComment, DayPatch, Profile, StayPatch, TripDay, TripData, TripStay } from '../lib/types'
+import type { DayPatch, Profile, StayPatch, TripDay, TripData, TripStay } from '../lib/types'
 
 function requireIdentity(): string {
   const id = getStoredProfileId()
@@ -58,22 +58,10 @@ export const supabaseApi: TripApi = {
       .filter(Boolean)
 
     const rawDays = daysRes.data ?? []
-    const dayIds = rawDays.map((d) => d.id)
-    let comments: DayComment[] = []
-    if (dayIds.length > 0) {
-      const { data: commentRows, error: commentsError } = await supabase
-        .from('trip_day_comments')
-        .select('*')
-        .in('trip_day_id', dayIds)
-        .order('created_at')
-      if (commentsError) throw new Error(commentsError.message)
-      comments = commentRows ?? []
-    }
 
     const days: TripDay[] = rawDays.map((d) => ({
       ...d,
       activities: d.activities ?? [],
-      comments: comments.filter((c) => c.trip_day_id === d.id),
     }))
 
     const stays: TripStay[] = staysRes.data ?? []
@@ -164,14 +152,6 @@ export const supabaseApi: TripApi = {
       if (updateError) throw new Error(updateError.message)
     }
     await syncTripRange(tripId)
-  },
-
-  async addComment(dayId, body) {
-    const uid = requireIdentity()
-    const { error } = await supabase
-      .from('trip_day_comments')
-      .insert({ trip_day_id: dayId, author_id: uid, body })
-    if (error) throw new Error(error.message)
   },
 
   async createStay(tripId, fields) {

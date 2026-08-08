@@ -11,14 +11,6 @@ export interface Trip {
   end_date: string
 }
 
-export interface DayComment {
-  id: string
-  trip_day_id: string
-  author_id: string
-  body: string
-  created_at: string
-}
-
 export interface TripDay {
   id: string
   trip_id: string
@@ -27,12 +19,9 @@ export interface TripDay {
   lat: number | null
   lng: number | null
   activities: string[]
-  drive_distance_km: number | null
-  drive_time_hours: number | null
   notes: string | null
   updated_by: string | null
   updated_at: string
-  comments: DayComment[]
 }
 
 /** Een boeking (hotel/motel/cabin) die één of meerdere aaneengesloten nachten beslaat. */
@@ -61,7 +50,7 @@ export interface TripData {
 
 /** Bewerkbare velden van een dag (datum wijzigen loopt via moveDay). */
 export type DayPatch = Partial<
-  Omit<TripDay, 'id' | 'trip_id' | 'date' | 'comments' | 'updated_at' | 'updated_by'>
+  Omit<TripDay, 'id' | 'trip_id' | 'date' | 'updated_at' | 'updated_by'>
 >
 
 /** Bewerkbare velden van een verblijf. */
@@ -73,7 +62,5 @@ export interface ClipboardDay {
   lat: number | null
   lng: number | null
   activities: string[]
-  drive_distance_km: number | null
-  drive_time_hours: number | null
   notes: string | null
 }

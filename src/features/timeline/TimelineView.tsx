@@ -1,10 +1,16 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatDayMonth } from '../../lib/dates'
 import { bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
 import { findStayForDate } from '../../lib/stays'
+import { computeStayAdjustments, describeAdjustment } from '../../lib/staySplit'
 import { getStoredProfileId } from '../../lib/identity'
 import type { Profile, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
+import { useDateRangeSelection } from '../../hooks/useDateRangeSelection'
 import { ProgressLine } from './ProgressLine'
+import { StayForm } from '../budget/StayForm'
+import { SelectionActionBar } from '../../components/SelectionActionBar'
+import { ConfirmModal } from '../../components/ConfirmModal'
 
 /** Lineaire dag-voor-dag lijst — de primaire weergave op mobiel. */
 export function TimelineView({
@@ -31,17 +37,61 @@ export function TimelineView({
     void mutations.updateStay(stay.id, nextBookingPatch(stay, getStoredProfileId()))
   }
 
+  const selection = useDateRangeSelection()
+  const rangeSelectStartedRef = useRef(false)
+  const [stayFormPrefill, setStayFormPrefill] = useState<
+    { start_date: string; end_date: string } | null | undefined
+  >(undefined)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmDetachOpen, setConfirmDetachOpen] = useState(false)
+
+  const dayByDate = useMemo(() => {
+    const map = new Map<string, TripDay>()
+    for (const d of days) map.set(d.date, d)
+    return map
+  }, [days])
+
+  const detachAdjustments = useMemo(
+    () => computeStayAdjustments(stays, selection.dates),
+    [stays, selection.dates],
+  )
+  const deletableDayCount = selection.dates.filter((iso) => dayByDate.has(iso)).length
+
+  useEffect(() => {
+    if (!selection.isDragging) return
+    const up = () => selection.endRangeDrag()
+    window.addEventListener('mouseup', up)
+    return () => window.removeEventListener('mouseup', up)
+  }, [selection.isDragging, selection])
+
+  useEffect(() => {
+    if (!selection.isRangeActive) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') selection.clear()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selection.isRangeActive, selection])
+
   return (
     <section className="mx-auto w-full max-w-[960px]" style={{ padding: 'clamp(16px, 4vw, 36px)' }}>
       <ProgressLine days={days} onOpenDay={onOpenDay} />
 
-      <div className="mb-4 mt-5 flex flex-wrap justify-end gap-3">
-        <button type="button" className="btn-outline" onClick={onShift}>
-          Dagen verschuiven
-        </button>
-        <button type="button" className="btn-diesel" onClick={onAddDay}>
-          + Dag toevoegen
-        </button>
+      <div className="mb-4 mt-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="font-mono text-[12px] text-muted">
+          Shift/Ctrl+slepen om meerdere dagen te selecteren
+        </p>
+        <div className="flex flex-wrap justify-end gap-3">
+          <button type="button" className="btn-outline" onClick={onShift}>
+            Dagen verschuiven
+          </button>
+          <button type="button" className="btn-diesel" onClick={() => setStayFormPrefill(null)}>
+            + Verblijf toevoegen
+          </button>
+          <button type="button" className="btn-diesel" onClick={onAddDay}>
+            + Dag toevoegen
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -49,12 +99,38 @@ export function TimelineView({
           const stay = findStayForDate(stays, day.date)
           const badge = stay ? bookingBadge(stay) : null
           const { day: dayNr, month } = formatDayMonth(day.date)
-          const hasDrive = (day.drive_time_hours ?? 0) > 0 || (day.drive_distance_km ?? 0) > 0
+          const isRangeSelected = selection.isSelected(day.date)
           return (
             <button
               key={day.id}
               type="button"
-              onClick={() => onOpenDay(day.id)}
+              style={
+                isRangeSelected
+                  ? {
+                      background: 'color-mix(in srgb, var(--color-sage) 18%, var(--color-card))',
+                      outline: '2px solid var(--color-sage)',
+                      outlineOffset: -2,
+                    }
+                  : undefined
+              }
+              onMouseDown={(e) => {
+                const modifier = e.shiftKey || e.ctrlKey || e.metaKey
+                rangeSelectStartedRef.current = modifier
+                if (modifier) {
+                  e.preventDefault()
+                  selection.beginRangeDrag(day.date)
+                }
+              }}
+              onMouseEnter={() => {
+                if (selection.isDragging) selection.extendRangeDrag(day.date)
+              }}
+              onClick={(e) => {
+                if (rangeSelectStartedRef.current || e.shiftKey || e.ctrlKey || e.metaKey) {
+                  rangeSelectStartedRef.current = false
+                  return
+                }
+                onOpenDay(day.id)
+              }}
               className="flex flex-wrap gap-x-5 gap-y-2 border-[1.5px] border-edge bg-card px-[18px] py-4 text-left transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-[0_4px_14px_rgba(42,36,32,0.1)]"
             >
               <span className="min-w-[64px]">
@@ -121,25 +197,81 @@ export function TimelineView({
               </span>
 
               <span className="flex-1 basis-36 text-right font-mono">
-                {hasDrive && (
-                  <span className="block text-[14px] text-diesel">
-                    {day.drive_time_hours ?? 0}u · {day.drive_distance_km ?? 0}km
-                  </span>
-                )}
                 <span className="mt-1 block text-[11.5px] leading-relaxed text-muted">
                   Laatst bewerkt door {memberName(day.updated_by)}
-                  {day.comments.length > 0 && (
-                    <>
-                      <br />
-                      {day.comments.length} {day.comments.length === 1 ? 'reactie' : 'reacties'}
-                    </>
-                  )}
                 </span>
               </span>
             </button>
           )
         })}
       </div>
+
+      {selection.isRangeActive && (
+        <SelectionActionBar
+          count={selection.dates.length}
+          canDetachStay={detachAdjustments.length > 0}
+          onAddStay={() => {
+            setStayFormPrefill({
+              start_date: selection.dates[0],
+              end_date: selection.dates[selection.dates.length - 1],
+            })
+            selection.clear()
+          }}
+          onDeleteDays={() => setConfirmDeleteOpen(true)}
+          onDetachStay={() => setConfirmDetachOpen(true)}
+          onCancel={() => selection.clear()}
+        />
+      )}
+
+      {stayFormPrefill !== undefined && (
+        <StayForm
+          stay={null}
+          members={members}
+          mutations={mutations}
+          initialDates={stayFormPrefill ?? undefined}
+          onClose={() => setStayFormPrefill(undefined)}
+        />
+      )}
+
+      {confirmDeleteOpen && (
+        <ConfirmModal
+          title="Dagen verwijderen"
+          message={`Weet je zeker dat je ${deletableDayCount} ${deletableDayCount === 1 ? 'dag' : 'dagen'} wilt verwijderen? Dit kan niet ongedaan worden gemaakt.`}
+          confirmLabel="Verwijderen"
+          onCancel={() => setConfirmDeleteOpen(false)}
+          onConfirm={async () => {
+            for (const iso of selection.dates) {
+              const d = dayByDate.get(iso)
+              if (d) await mutations.deleteDay(d.id)
+            }
+            setConfirmDeleteOpen(false)
+            selection.clear()
+          }}
+        />
+      )}
+
+      {confirmDetachOpen && (
+        <ConfirmModal
+          title="Verblijf loskoppelen"
+          message={detachAdjustments.map(describeAdjustment).join('\n')}
+          confirmLabel="Loskoppelen"
+          onCancel={() => setConfirmDetachOpen(false)}
+          onConfirm={async () => {
+            for (const adj of detachAdjustments) {
+              if (adj.kind === 'trim') await mutations.updateStay(adj.stay.id, adj.patch)
+              else if (adj.kind === 'split') await mutations.updateStay(adj.stay.id, adj.headPatch)
+            }
+            for (const adj of detachAdjustments) {
+              if (adj.kind === 'delete') await mutations.deleteStay(adj.stay.id)
+            }
+            for (const adj of detachAdjustments) {
+              if (adj.kind === 'split') await mutations.createStay(adj.tailFields)
+            }
+            setConfirmDetachOpen(false)
+            selection.clear()
+          }}
+        />
+      )}
     </section>
   )
 }

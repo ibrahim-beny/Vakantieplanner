@@ -89,27 +89,3 @@ export function Header({
     </header>
   )
 }
-
-export function SummaryBar({ data }: { data: TripData }) {
-  const totalKm = data.days.reduce((sum, d) => sum + (d.drive_distance_km ?? 0), 0)
-  const totalHours = data.days.reduce((sum, d) => sum + (d.drive_time_hours ?? 0), 0)
-  const hoursLabel = Number.isInteger(totalHours) ? String(totalHours) : totalHours.toFixed(1)
-
-  return (
-    <div
-      className="flex flex-wrap gap-x-10 gap-y-1 bg-sand py-3.5"
-      style={{ paddingInline: 'clamp(16px, 4vw, 36px)' }}
-    >
-      <p className="font-mono text-[13px] uppercase tracking-[0.1em] text-muted">
-        Totale afstand{' '}
-        <span className="ml-1.5 font-medium normal-case tracking-normal text-ink">{totalKm}km</span>
-      </p>
-      <p className="font-mono text-[13px] uppercase tracking-[0.1em] text-muted">
-        Totale rijtijd{' '}
-        <span className="ml-1.5 font-medium normal-case tracking-normal text-ink">
-          {hoursLabel}u
-        </span>
-      </p>
-    </div>
-  )
-}

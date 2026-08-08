@@ -11,7 +11,6 @@ export interface TripMutations {
   moveDay(dayId: string, newDate: string): Promise<void>
   deleteDay(dayId: string): Promise<void>
   shiftDays(fromDate: string, deltaDays: number): Promise<void>
-  addComment(dayId: string, body: string): Promise<void>
   createStay(
     fields: { location_name: string; start_date: string; end_date: string } & StayPatch,
   ): Promise<string | null>
@@ -46,7 +45,7 @@ export function useTripData() {
   const tripId = data?.trip.id
 
   // Realtime: haal opnieuw op zodra de ander (of jijzelf, via een ander
-  // tabblad) trip_days/trip_day_comments wijzigt — geen refresh meer nodig.
+  // tabblad) trip_days wijzigt — geen refresh meer nodig.
   useEffect(() => {
     if (!tripId || useMock) return
 
@@ -65,11 +64,6 @@ export function useTripData() {
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'trip_days', filter: `trip_id=eq.${tripId}` },
-          debouncedRefetch,
-        )
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'trip_day_comments' },
           debouncedRefetch,
         )
         .on(
@@ -118,7 +112,6 @@ export function useTripData() {
       if (!tripId) return
       await run(() => api.shiftDays(tripId, fromDate, deltaDays))
     },
-    addComment: (dayId, body) => run(() => api.addComment(dayId, body)),
     createStay: async (fields) => {
       if (!tripId) return null
       let newId: string | null = null

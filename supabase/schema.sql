@@ -39,8 +39,6 @@ create table trip_days (
   lat double precision,
   lng double precision,
   activities text[], -- losse activiteiten, in de UI als tags toe te voegen/verwijderen
-  drive_distance_km numeric,
-  drive_time_hours numeric, -- in uren (bijv. 3.5, 8.5), matcht "Rijtijd (u)" 1-op-1
   notes text,
   updated_by uuid references profiles(id),
   updated_at timestamptz default now(),
@@ -63,15 +61,6 @@ create table trip_stays (
   paid_back boolean not null default false,
   updated_by uuid references profiles(id),
   updated_at timestamptz default now()
-);
-
--- Reacties per dag (simpel, ongenest)
-create table trip_day_comments (
-  id uuid primary key default gen_random_uuid(),
-  trip_day_id uuid references trip_days(id) on delete cascade,
-  author_id uuid references profiles(id),
-  body text not null,
-  created_at timestamptz default now()
 );
 
 -- updated_at automatisch bijwerken bij elke wijziging aan een dag/verblijf
@@ -103,4 +92,4 @@ create trigger trip_stays_updated_at
 -- Realtime: laat de app wijzigingen van andere gebruikers direct
 -- binnenkrijgen (via websockets), zonder dat iemand hoeft te verversen.
 -- ============================================================
-alter publication supabase_realtime add table trip_days, trip_day_comments, trip_stays;
+alter publication supabase_realtime add table trip_days, trip_stays;

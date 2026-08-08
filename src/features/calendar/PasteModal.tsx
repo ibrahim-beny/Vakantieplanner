@@ -3,19 +3,11 @@ import { Modal } from '../../components/Modal'
 import { formatFull } from '../../lib/dates'
 import type { ClipboardDay, DayPatch, TripDay } from '../../lib/types'
 
-type PasteField = 'locatie' | 'activiteiten' | 'rijinfo' | 'notitie'
+type PasteField = 'locatie' | 'activiteiten' | 'notitie'
 
 const FIELDS: { key: PasteField; label: string; preview: (c: ClipboardDay) => string }[] = [
   { key: 'locatie', label: 'Locatie', preview: (c) => c.location_name },
   { key: 'activiteiten', label: 'Activiteiten', preview: (c) => c.activities.join(', ') || '—' },
-  {
-    key: 'rijinfo',
-    label: 'Rijinfo',
-    preview: (c) =>
-      c.drive_time_hours || c.drive_distance_km
-        ? `${c.drive_time_hours ?? 0}u · ${c.drive_distance_km ?? 0}km`
-        : '—',
-  },
   { key: 'notitie', label: 'Notitie', preview: (c) => c.notes ?? '—' },
 ]
 
@@ -38,7 +30,6 @@ export function PasteModal({
   const [checked, setChecked] = useState<Record<PasteField, boolean>>({
     locatie: true,
     activiteiten: true,
-    rijinfo: true,
     notitie: true,
   })
   const [busy, setBusy] = useState(false)
@@ -51,10 +42,6 @@ export function PasteModal({
       patch.lng = clipboard.lng
     }
     if (checked.activiteiten) patch.activities = [...clipboard.activities]
-    if (checked.rijinfo) {
-      patch.drive_distance_km = clipboard.drive_distance_km
-      patch.drive_time_hours = clipboard.drive_time_hours
-    }
     if (checked.notitie) patch.notes = clipboard.notes
     return patch
   }

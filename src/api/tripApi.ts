@@ -19,7 +19,6 @@ export interface TripApi {
   deleteDay(dayId: string): Promise<void>
   /** Verschuift alle dagen vanaf fromDate met deltaDays (+/-). */
   shiftDays(tripId: string, fromDate: string, deltaDays: number): Promise<void>
-  addComment(dayId: string, body: string): Promise<void>
   /** Maakt een verblijf aan en geeft het nieuwe stay-id terug. */
   createStay(
     tripId: string,
