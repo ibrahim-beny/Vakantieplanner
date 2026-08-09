@@ -4,6 +4,7 @@ import { bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
 import { findStayForDate } from '../../lib/stays'
 import { computeStayAdjustments, describeAdjustment } from '../../lib/staySplit'
 import { getStoredProfileId } from '../../lib/identity'
+import { colorForCity, type CityColor } from '../../lib/cityColors'
 import type { Profile, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { useDateRangeSelection } from '../../hooks/useDateRangeSelection'
@@ -21,6 +22,7 @@ export function TimelineView({
   onOpenDay,
   onAddDay,
   onShift,
+  cityColorMap,
 }: {
   days: TripDay[]
   stays: TripStay[]
@@ -29,6 +31,7 @@ export function TimelineView({
   onOpenDay: (id: string) => void
   onAddDay: () => void
   onShift: () => void
+  cityColorMap: Map<string, CityColor>
 }) {
   const memberName = (id: string | null) =>
     members.find((m) => m.id === id)?.display_name ?? 'onbekend'
@@ -98,21 +101,21 @@ export function TimelineView({
         {days.map((day) => {
           const stay = findStayForDate(stays, day.date)
           const badge = stay ? bookingBadge(stay) : null
+          const cityColor = colorForCity(cityColorMap, day.location_name)
           const { day: dayNr, month } = formatDayMonth(day.date)
           const isRangeSelected = selection.isSelected(day.date)
           return (
             <button
               key={day.id}
               type="button"
-              style={
-                isRangeSelected
-                  ? {
-                      background: 'color-mix(in srgb, var(--color-sage) 18%, var(--color-card))',
-                      outline: '2px solid var(--color-sage)',
-                      outlineOffset: -2,
-                    }
-                  : undefined
-              }
+              style={{
+                background: isRangeSelected
+                  ? `color-mix(in srgb, var(--color-sage) 18%, ${cityColor?.bg ?? 'var(--color-card)'})`
+                  : (cityColor?.bg ?? 'var(--color-card)'),
+                ...(isRangeSelected
+                  ? { outline: '2px solid var(--color-sage)', outlineOffset: -2 }
+                  : {}),
+              }}
               onMouseDown={(e) => {
                 const modifier = e.shiftKey || e.ctrlKey || e.metaKey
                 rangeSelectStartedRef.current = modifier
@@ -131,7 +134,7 @@ export function TimelineView({
                 }
                 onOpenDay(day.id)
               }}
-              className="flex flex-wrap gap-x-5 gap-y-2 border-[1.5px] border-edge bg-card px-[18px] py-4 text-left transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-[0_4px_14px_rgba(42,36,32,0.1)]"
+              className="flex flex-wrap gap-x-5 gap-y-2 border-[1.5px] border-edge px-[18px] py-4 text-left transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-[0_4px_14px_rgba(42,36,32,0.1)]"
             >
               <span className="min-w-[64px]">
                 <span className="block font-display text-[26px] font-bold leading-none text-ink">

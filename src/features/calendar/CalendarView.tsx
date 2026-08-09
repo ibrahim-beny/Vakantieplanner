@@ -13,6 +13,7 @@ import { BOOKING_BADGES, bookingBadge, nextBookingPatch } from '../../lib/bookin
 import { findStayForDate } from '../../lib/stays'
 import { computeStayAdjustments, describeAdjustment } from '../../lib/staySplit'
 import { getStoredProfileId } from '../../lib/identity'
+import { colorForCity, type CityColor } from '../../lib/cityColors'
 import type { ClipboardDay, Profile, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { useDateRangeSelection } from '../../hooks/useDateRangeSelection'
@@ -41,12 +42,14 @@ export function CalendarView({
   members,
   onOpenDay,
   mutations,
+  cityColorMap,
 }: {
   days: TripDay[]
   stays: TripStay[]
   members: Profile[]
   onOpenDay: (id: string) => void
   mutations: TripMutations
+  cityColorMap: Map<string, CityColor>
 }) {
   const dayByDate = useMemo(() => {
     const map = new Map<string, TripDay>()
@@ -196,6 +199,7 @@ export function CalendarView({
           const day = dayByDate.get(iso)
           const stay = findStayForDate(stays, iso)
           const badge = stay ? bookingBadge(stay) : null
+          const cityColor = colorForCity(cityColorMap, day?.location_name ?? stay?.location_name ?? null)
           const isSelected = selectedDate === iso
           const isDragOver = dragOverDate === iso
           const isRangeSelected = selection.isSelected(iso)
@@ -225,9 +229,9 @@ export function CalendarView({
                 height: CELL_HEIGHT,
                 position: 'relative',
                 background: isRangeSelected
-                  ? 'color-mix(in srgb, var(--color-sage) 18%, var(--color-card))'
-                  : 'var(--color-card)',
-                color: 'var(--color-ink)',
+                  ? `color-mix(in srgb, var(--color-sage) 18%, ${cityColor?.bg ?? 'var(--color-card)'})`
+                  : (cityColor?.bg ?? 'var(--color-card)'),
+                color: cityColor?.fg ?? 'var(--color-ink)',
                 border: '1px solid var(--color-edge)',
                 outline: isRangeSelected
                   ? '2px solid var(--color-sage)'

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useIdentity } from './features/identity/useIdentity'
 import { WhoAmIScreen } from './features/identity/WhoAmIScreen'
 import { Header, type View } from './components/Header'
@@ -10,6 +10,7 @@ import { DayDetailPanel } from './features/dayDetail/DayDetailPanel'
 import { ShiftDaysModal } from './features/shift/ShiftDaysModal'
 import { useTripData } from './hooks/useTripData'
 import { addDaysISO, toLocalISO } from './lib/dates'
+import { buildCityColorMap } from './lib/cityColors'
 
 function CenteredMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -34,6 +35,11 @@ export default function App() {
     setView(window.matchMedia('(max-width: 767px)').matches ? 'tijdlijn' : 'kalender')
   }, [])
   const [shiftOpen, setShiftOpen] = useState(false)
+
+  const cityColorMap = useMemo(
+    () => buildCityColorMap(data?.days ?? [], data?.stays ?? []),
+    [data],
+  )
 
   if (loading && !data) return <CenteredMessage>Trip laden…</CenteredMessage>
   if (!data) {
@@ -88,6 +94,7 @@ export default function App() {
           members={data.members}
           onOpenDay={setOpenDayId}
           mutations={mutations}
+          cityColorMap={cityColorMap}
         />
       )}
       {view === 'tijdlijn' && (
@@ -96,6 +103,7 @@ export default function App() {
           stays={data.stays}
           members={data.members}
           mutations={mutations}
+          cityColorMap={cityColorMap}
           onOpenDay={setOpenDayId}
           onAddDay={() => void addDay()}
           onShift={() => setShiftOpen(true)}
