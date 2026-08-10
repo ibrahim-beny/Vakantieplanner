@@ -382,6 +382,16 @@ export function CalendarView({
               Kopieer dag
             </button>
           )}
+          <button
+            type="button"
+            className="block w-full px-4 py-2 text-left text-[14px] text-ink hover:bg-sand"
+            onClick={() => {
+              setStayFormPrefill({ start_date: contextMenu.date, end_date: contextMenu.date })
+              setContextMenu(null)
+            }}
+          >
+            Verblijf toevoegen
+          </button>
           {dayByDate.get(contextMenu.date) && (
             <button
               type="button"
