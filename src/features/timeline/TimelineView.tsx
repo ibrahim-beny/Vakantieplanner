@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { formatDayMonth } from '../../lib/dates'
+import { addDaysISO, formatDayMonth } from '../../lib/dates'
 import { bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
 import { findStayForDate } from '../../lib/stays'
 import { computeStayAdjustments, describeAdjustment } from '../../lib/staySplit'
@@ -216,7 +216,7 @@ export function TimelineView({
           onAddStay={() => {
             setStayFormPrefill({
               start_date: selection.dates[0],
-              end_date: selection.dates[selection.dates.length - 1],
+              end_date: addDaysISO(selection.dates[selection.dates.length - 1], 1),
             })
             selection.clear()
           }}

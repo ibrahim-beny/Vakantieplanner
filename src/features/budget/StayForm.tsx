@@ -56,7 +56,7 @@ export function StayForm({
 
   const isNew = stay === null
   const canSave = draft.location_name.trim() !== '' && draft.start_date !== '' && draft.end_date !== ''
-  const rangeInvalid = draft.start_date !== '' && draft.end_date !== '' && draft.end_date < draft.start_date
+  const rangeInvalid = draft.start_date !== '' && draft.end_date !== '' && draft.end_date <= draft.start_date
 
   function buildPatch(): StayPatch {
     return {
@@ -154,7 +154,7 @@ export function StayForm({
             </div>
             <div className="flex-1">
               <label htmlFor="stay-end" className="field-label">
-                Tot en met
+                Tot
               </label>
               <input
                 id="stay-end"
@@ -167,7 +167,7 @@ export function StayForm({
           </div>
           {rangeInvalid && (
             <p className="-mt-2 font-mono text-[11px] text-canyon">
-              "Tot en met" kan niet vóór "Van" liggen.
+              "Tot" moet ná "Van" liggen.
             </p>
           )}
 

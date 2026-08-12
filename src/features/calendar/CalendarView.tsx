@@ -8,7 +8,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
-import { formatFull, formatMonthTitle, parseLocalISO, toLocalISO } from '../../lib/dates'
+import { addDaysISO, formatFull, formatMonthTitle, parseLocalISO, toLocalISO } from '../../lib/dates'
 import { BOOKING_BADGES, bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
 import { findStayForDate } from '../../lib/stays'
 import { computeStayAdjustments, describeAdjustment } from '../../lib/staySplit'
@@ -386,7 +386,10 @@ export function CalendarView({
             type="button"
             className="block w-full px-4 py-2 text-left text-[14px] text-ink hover:bg-sand"
             onClick={() => {
-              setStayFormPrefill({ start_date: contextMenu.date, end_date: contextMenu.date })
+              setStayFormPrefill({
+                start_date: contextMenu.date,
+                end_date: addDaysISO(contextMenu.date, 1),
+              })
               setContextMenu(null)
             }}
           >
@@ -468,7 +471,7 @@ export function CalendarView({
           onAddStay={() => {
             setStayFormPrefill({
               start_date: selection.dates[0],
-              end_date: selection.dates[selection.dates.length - 1],
+              end_date: addDaysISO(selection.dates[selection.dates.length - 1], 1),
             })
             selection.clear()
           }}

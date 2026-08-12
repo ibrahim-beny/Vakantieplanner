@@ -24,12 +24,14 @@ export function computeStayAdjustments(stays: TripStay[], selectedDates: string[
   const adjustments: StayAdjustment[] = []
 
   for (const stay of stays) {
-    if (stay.end_date < selectedMin || stay.start_date > selectedMax) continue // geen overlap
+    // stay.end_date is de checkoutdag (exclusief); laatste bezette nacht is stay.end_date - 1.
+    const stayLastNight = addDaysISO(stay.end_date, -1)
+    if (stayLastNight < selectedMin || stay.start_date > selectedMax) continue // geen overlap
 
     const overlapStart = stay.start_date > selectedMin ? stay.start_date : selectedMin
-    const overlapEnd = stay.end_date < selectedMax ? stay.end_date : selectedMax
+    const overlapEnd = stayLastNight < selectedMax ? stayLastNight : selectedMax
     const touchesStart = overlapStart === stay.start_date
-    const touchesEnd = overlapEnd === stay.end_date
+    const touchesEnd = overlapEnd === stayLastNight
 
     if (touchesStart && touchesEnd) {
       adjustments.push({ kind: 'delete', stay })
@@ -37,14 +39,14 @@ export function computeStayAdjustments(stays: TripStay[], selectedDates: string[
       // prefix-overlap: kort de stay in aan het begin
       adjustments.push({ kind: 'trim', stay, patch: { start_date: addDaysISO(overlapEnd, 1) } })
     } else if (touchesEnd) {
-      // suffix-overlap: kort de stay in aan het eind
-      adjustments.push({ kind: 'trim', stay, patch: { end_date: addDaysISO(overlapStart, -1) } })
+      // suffix-overlap: kort de stay in aan het eind (nieuwe checkoutdag = eerste geselecteerde dag)
+      adjustments.push({ kind: 'trim', stay, patch: { end_date: overlapStart } })
     } else {
       // strikte middenoverlap: splits in kop (bestaand record, behoudt cost/booked) + staart (nieuw, leeg)
       adjustments.push({
         kind: 'split',
         stay,
-        headPatch: { end_date: addDaysISO(overlapStart, -1) },
+        headPatch: { end_date: overlapStart },
         tailFields: {
           location_name: stay.location_name,
           start_date: addDaysISO(overlapEnd, 1),

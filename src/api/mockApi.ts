@@ -49,15 +49,16 @@ const SEED_DAYS: SeedDay[] = [
 
 type SeedStay = [location: string, start_date: string, end_date: string]
 
+// end_date is de checkoutdag (exclusief, niet meer meegeteld als verblijfsdag).
 const SEED_STAYS: SeedStay[] = [
-  ['Budget motel, San Francisco', '2026-09-01', '2026-09-03'],
-  ['Lakeside cabin, South Lake Tahoe', '2026-09-04', '2026-09-05'],
-  ['Budget motel, Reno', '2026-09-06', '2026-09-06'],
-  ['Budget motel, Salt Lake City', '2026-09-07', '2026-09-08'],
-  ['Lodge bij Bryce Canyon', '2026-09-09', '2026-09-10'],
-  ['Cabin Springdale', '2026-09-11', '2026-09-14'],
-  ['Budget motel, Las Vegas', '2026-09-15', '2026-09-17'],
-  ['Budget motel, Los Angeles', '2026-09-18', '2026-09-18'],
+  ['Budget motel, San Francisco', '2026-09-01', '2026-09-04'],
+  ['Lakeside cabin, South Lake Tahoe', '2026-09-04', '2026-09-06'],
+  ['Budget motel, Reno', '2026-09-06', '2026-09-07'],
+  ['Budget motel, Salt Lake City', '2026-09-07', '2026-09-09'],
+  ['Lodge bij Bryce Canyon', '2026-09-09', '2026-09-11'],
+  ['Cabin Springdale', '2026-09-11', '2026-09-15'],
+  ['Budget motel, Las Vegas', '2026-09-15', '2026-09-18'],
+  ['Budget motel, Los Angeles', '2026-09-18', '2026-09-19'],
 ]
 
 let nextId = 1
