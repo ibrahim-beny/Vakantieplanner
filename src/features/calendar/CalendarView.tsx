@@ -74,6 +74,7 @@ export function CalendarView({
   const [stayFormPrefill, setStayFormPrefill] = useState<
     { start_date: string; end_date: string } | null | undefined
   >(undefined)
+  const [editingStay, setEditingStay] = useState<TripStay | null>(null)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDetachOpen, setConfirmDetachOpen] = useState(false)
 
@@ -382,19 +383,35 @@ export function CalendarView({
               Kopieer dag
             </button>
           )}
-          <button
-            type="button"
-            className="block w-full px-4 py-2 text-left text-[14px] text-ink hover:bg-sand"
-            onClick={() => {
-              setStayFormPrefill({
-                start_date: contextMenu.date,
-                end_date: addDaysISO(contextMenu.date, 1),
-              })
-              setContextMenu(null)
-            }}
-          >
-            Verblijf toevoegen
-          </button>
+          {(() => {
+            const existingStay = findStayForDate(stays, contextMenu.date)
+            return existingStay ? (
+              <button
+                type="button"
+                className="block w-full px-4 py-2 text-left text-[14px] text-ink hover:bg-sand"
+                onClick={() => {
+                  setEditingStay(existingStay)
+                  setContextMenu(null)
+                }}
+              >
+                Verblijf bewerken
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="block w-full px-4 py-2 text-left text-[14px] text-ink hover:bg-sand"
+                onClick={() => {
+                  setStayFormPrefill({
+                    start_date: contextMenu.date,
+                    end_date: addDaysISO(contextMenu.date, 1),
+                  })
+                  setContextMenu(null)
+                }}
+              >
+                Verblijf toevoegen
+              </button>
+            )
+          })()}
           {dayByDate.get(contextMenu.date) && (
             <button
               type="button"
@@ -488,6 +505,15 @@ export function CalendarView({
           mutations={mutations}
           initialDates={stayFormPrefill ?? undefined}
           onClose={() => setStayFormPrefill(undefined)}
+        />
+      )}
+
+      {editingStay && (
+        <StayForm
+          stay={editingStay}
+          members={members}
+          mutations={mutations}
+          onClose={() => setEditingStay(null)}
         />
       )}
 

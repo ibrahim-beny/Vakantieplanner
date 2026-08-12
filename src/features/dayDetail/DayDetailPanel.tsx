@@ -5,6 +5,7 @@ import type { Profile, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { ActivityTagInput } from './ActivityTagInput'
 import { PlaceSearchInput } from './PlaceSearchInput'
+import { StayForm } from '../budget/StayForm'
 
 interface Draft {
   location_name: string
@@ -49,6 +50,7 @@ export function DayDetailPanel({
 }) {
   const [draft, setDraft] = useState<Draft>(() => toDraft(day))
   const [date, setDate] = useState(day.date)
+  const [editingStay, setEditingStay] = useState(false)
   // Ref met de meest recente activiteitenlijst, zodat snel opeenvolgende
   // tag-wijzigingen (add/add binnen één render) niet elkaars update overschrijven.
   const activitiesRef = useRef<string[]>([...day.activities])
@@ -173,12 +175,16 @@ export function DayDetailPanel({
           <div>
             <span className="field-label">Verblijf</span>
             {stay ? (
-              <p className="border-[1.5px] border-edge bg-[rgba(42,36,32,0.03)] px-3 py-2.5 font-mono text-[13px] text-inkbody">
+              <button
+                type="button"
+                onClick={() => setEditingStay(true)}
+                className="w-full border-[1.5px] border-edge bg-[rgba(42,36,32,0.03)] px-3 py-2.5 text-left font-mono text-[13px] text-inkbody hover:border-canyon"
+              >
                 {stay.location_name} — {nightsOf(stay)} nacht{nightsOf(stay) === 1 ? '' : 'en'}
                 {stay.cost != null && <> · {formatEuro(stay.cost)}</>}
                 <br />
-                <span className="text-[11px] text-muted">Bewerk dit verblijf in de Budget-tab.</span>
-              </p>
+                <span className="text-[11px] text-muted">Klik om dit verblijf te bewerken.</span>
+              </button>
             ) : (
               <p className="font-mono text-[11px] text-muted">
                 Geen verblijf gekoppeld aan deze dag — voeg er een toe in de Budget-tab.
@@ -229,6 +235,15 @@ export function DayDetailPanel({
           </div>
         </div>
       </div>
+
+      {editingStay && stay && (
+        <StayForm
+          stay={stay}
+          members={members}
+          mutations={mutations}
+          onClose={() => setEditingStay(false)}
+        />
+      )}
     </div>
   )
 }
