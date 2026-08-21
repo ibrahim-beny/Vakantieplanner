@@ -159,21 +159,30 @@ export function CalendarView({
   }
 
   const daysToGo = daysUntil(trip.start_date)
-  const countdownLabel =
-    daysToGo > 0
-      ? `Nog ${daysToGo} ${daysToGo === 1 ? 'dag' : 'dagen'} tot je vakantie`
-      : daysToGo === 0
-        ? 'Vandaag begint je vakantie!'
-        : null
 
   return (
     <section className="mx-auto w-full max-w-[1200px]" style={{ padding: 'clamp(16px, 4vw, 36px)' }}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          {countdownLabel && (
-            <p className="w-fit border-[1.5px] border-diesel bg-diesel/10 px-2 py-0.5 font-mono text-[12px] uppercase tracking-[0.06em] text-diesel">
-              {countdownLabel}
-            </p>
+        <div className="flex flex-col gap-2">
+          {daysToGo >= 0 && (
+            <div className="flex w-fit items-center gap-2.5 bg-canyon py-1.5 pl-3 pr-4 text-card">
+              {daysToGo > 0 ? (
+                <>
+                  <span className="font-display text-[30px] font-800 leading-none tabular-nums">
+                    {daysToGo}
+                  </span>
+                  <span className="font-mono text-[10.5px] uppercase leading-[1.25] tracking-[0.06em]">
+                    {daysToGo === 1 ? 'dag' : 'dagen'}
+                    <br />
+                    tot vertrek
+                  </span>
+                </>
+              ) : (
+                <span className="font-display text-[20px] font-800 uppercase leading-none tracking-[0.02em]">
+                  Vandaag vertrek!
+                </span>
+              )}
+            </div>
           )}
           <p className="font-mono text-[12px] text-muted">
             Rechtermuisklik voor kopiëren/plakken · dubbelklik op een leeg vakje om in te plannen ·
