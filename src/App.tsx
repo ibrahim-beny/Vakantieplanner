@@ -89,6 +89,7 @@ export default function App() {
 
       {view === 'kalender' && (
         <CalendarView
+          trip={data.trip}
           days={data.days}
           stays={data.stays}
           members={data.members}

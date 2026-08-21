@@ -1,4 +1,4 @@
-import { addDays, format } from 'date-fns'
+import { addDays, differenceInCalendarDays, format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 
 /**
@@ -49,4 +49,9 @@ export function formatFull(iso: string): string {
 /** bijv. 'september 2026' */
 export function formatMonthTitle(d: Date): string {
   return format(d, 'MMMM yyyy', { locale: nl })
+}
+
+/** Aantal kalenderdagen tussen vandaag en startISO (negatief als startISO in het verleden ligt). */
+export function daysUntil(startISO: string): number {
+  return differenceInCalendarDays(parseLocalISO(startISO), new Date())
 }

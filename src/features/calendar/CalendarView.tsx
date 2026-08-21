@@ -8,13 +8,20 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
-import { addDaysISO, formatFull, formatMonthTitle, parseLocalISO, toLocalISO } from '../../lib/dates'
+import {
+  addDaysISO,
+  daysUntil,
+  formatFull,
+  formatMonthTitle,
+  parseLocalISO,
+  toLocalISO,
+} from '../../lib/dates'
 import { BOOKING_BADGES, bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
 import { findStayForDate } from '../../lib/stays'
 import { computeStayAdjustments, describeAdjustment } from '../../lib/staySplit'
 import { getStoredProfileId } from '../../lib/identity'
 import { colorForCity, type CityColor } from '../../lib/cityColors'
-import type { ClipboardDay, Profile, TripDay, TripStay } from '../../lib/types'
+import type { ClipboardDay, Profile, Trip, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { useDateRangeSelection } from '../../hooks/useDateRangeSelection'
 import { QuickAddModal } from './QuickAddModal'
@@ -37,6 +44,7 @@ function toClipboard(day: TripDay): ClipboardDay {
 }
 
 export function CalendarView({
+  trip,
   days,
   stays,
   members,
@@ -44,6 +52,7 @@ export function CalendarView({
   mutations,
   cityColorMap,
 }: {
+  trip: Trip
   days: TripDay[]
   stays: TripStay[]
   members: Profile[]
@@ -149,13 +158,28 @@ export function CalendarView({
     await mutations.moveDay(dayId, targetDate)
   }
 
+  const daysToGo = daysUntil(trip.start_date)
+  const countdownLabel =
+    daysToGo > 0
+      ? `Nog ${daysToGo} ${daysToGo === 1 ? 'dag' : 'dagen'} tot je vakantie`
+      : daysToGo === 0
+        ? 'Vandaag begint je vakantie!'
+        : null
+
   return (
     <section className="mx-auto w-full max-w-[1200px]" style={{ padding: 'clamp(16px, 4vw, 36px)' }}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="font-mono text-[12px] text-muted">
-          Rechtermuisklik voor kopiëren/plakken · dubbelklik op een leeg vakje om in te plannen ·
-          sleep om te verplaatsen · Shift/Ctrl+slepen om meerdere dagen te selecteren
-        </p>
+        <div className="flex flex-col gap-1">
+          {countdownLabel && (
+            <p className="w-fit border-[1.5px] border-diesel bg-diesel/10 px-2 py-0.5 font-mono text-[12px] uppercase tracking-[0.06em] text-diesel">
+              {countdownLabel}
+            </p>
+          )}
+          <p className="font-mono text-[12px] text-muted">
+            Rechtermuisklik voor kopiëren/plakken · dubbelklik op een leeg vakje om in te plannen ·
+            sleep om te verplaatsen · Shift/Ctrl+slepen om meerdere dagen te selecteren
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           <button type="button" className="btn-diesel" onClick={() => setStayFormPrefill(null)}>
             + Verblijf toevoegen
