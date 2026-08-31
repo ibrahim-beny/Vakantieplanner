@@ -1,9 +1,16 @@
 import { useMemo, useState } from 'react'
 import { formatEuro } from '../../lib/format'
 import { formatFull } from '../../lib/dates'
-import { computeBalances, simplifyDebts } from '../../lib/settlement'
+import { computeBalances, computeDirectSettlements, computeSettlementItems } from '../../lib/settlement'
 import { nextShareReminder, reminderBadge } from '../../lib/shareReminder'
-import type { Expense, ExpenseCategory, Profile, SettlementPayment, TripStay } from '../../lib/types'
+import type {
+  Expense,
+  ExpenseCategory,
+  Profile,
+  SettlementPayment,
+  SettlementPaymentItem,
+  TripStay,
+} from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { ExpenseForm } from './ExpenseForm'
 import { CategoryManager } from './CategoryManager'
@@ -15,6 +22,7 @@ export function ExpensesView({
   stays,
   members,
   settlementPayments,
+  settlementPaymentItems,
   mutations,
 }: {
   expenses: Expense[]
@@ -22,12 +30,14 @@ export function ExpensesView({
   stays: TripStay[]
   members: Profile[]
   settlementPayments: SettlementPayment[]
+  settlementPaymentItems: SettlementPaymentItem[]
   mutations: TripMutations
 }) {
   const [editingExpense, setEditingExpense] = useState<Expense | null | undefined>(undefined)
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(null)
 
   const memberName = (id: string) => members.find((m) => m.id === id)?.display_name ?? 'onbekend'
   const categoryName = (id: string | null) =>
@@ -39,7 +49,10 @@ export function ExpensesView({
     () => computeBalances(expenses, settlementPayments, members.map((m) => m.id)),
     [expenses, settlementPayments, members],
   )
-  const transactions = useMemo(() => simplifyDebts(balances), [balances])
+  const transactions = useMemo(
+    () => computeDirectSettlements(expenses, settlementPayments, members.map((m) => m.id)),
+    [expenses, settlementPayments, members],
+  )
 
   const filteredExpenses = useMemo(() => {
     const list =
@@ -48,11 +61,13 @@ export function ExpensesView({
   }, [expenses, categoryFilter])
 
   async function markAsPaid(from: string, to: string, amount: number) {
+    const items = computeSettlementItems(expenses, categories, from, to)
     await mutations.recordSettlementPayment({
       from_profile: from,
       to_profile: to,
       amount,
       paid_at: new Date().toISOString().slice(0, 10),
+      items,
     })
   }
 
@@ -125,24 +140,52 @@ export function ExpensesView({
               {historyOpen ? '▾' : '▸'} Eerder afgerekend ({settlementPayments.length})
             </button>
             {historyOpen && (
-              <div className="mt-2 flex flex-col gap-1.5">
+              <div className="mt-2 flex flex-col gap-2">
                 {[...settlementPayments]
                   .sort((a, b) => b.paid_at.localeCompare(a.paid_at))
-                  .map((p) => (
-                    <div key={p.id} className="flex items-center justify-between gap-2">
-                      <p className="font-mono text-[12px] text-muted">
-                        {formatFull(p.paid_at)} · {memberName(p.from_profile)} → {memberName(p.to_profile)}{' '}
-                        {formatEuro(p.amount)}
-                      </p>
-                      <button
-                        type="button"
-                        className="font-mono text-[11px] text-muted hover:text-canyon"
-                        onClick={() => void mutations.deleteSettlementPayment(p.id)}
-                      >
-                        Ongedaan maken
-                      </button>
-                    </div>
-                  ))}
+                  .map((p) => {
+                    const items = settlementPaymentItems
+                      .filter((it) => it.payment_id === p.id)
+                      .sort((a, b) => a.expense_date.localeCompare(b.expense_date))
+                    const isExpanded = expandedPaymentId === p.id
+                    return (
+                      <div key={p.id} className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            className={`flex-1 text-left font-mono text-[12px] text-muted ${
+                              items.length > 0 ? 'hover:text-diesel' : 'cursor-default'
+                            }`}
+                            onClick={() =>
+                              items.length > 0 && setExpandedPaymentId(isExpanded ? null : p.id)
+                            }
+                          >
+                            {items.length > 0 ? (isExpanded ? '▾ ' : '▸ ') : ''}
+                            {formatFull(p.paid_at)} · {memberName(p.from_profile)} →{' '}
+                            {memberName(p.to_profile)} {formatEuro(p.amount)}
+                          </button>
+                          <button
+                            type="button"
+                            className="font-mono text-[11px] text-muted hover:text-canyon"
+                            onClick={() => void mutations.deleteSettlementPayment(p.id)}
+                          >
+                            Ongedaan maken
+                          </button>
+                        </div>
+                        {isExpanded && items.length > 0 && (
+                          <div className="ml-4 flex flex-col gap-0.5 border-l-[1.5px] border-edge pl-3">
+                            {items.map((it) => (
+                              <p key={it.id} className="font-mono text-[11px] text-muted">
+                                {formatFull(it.expense_date)} · {it.title}
+                                {it.category_name ? ` · ${it.category_name}` : ''} ·{' '}
+                                {formatEuro(it.amount)}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
               </div>
             )}
           </div>

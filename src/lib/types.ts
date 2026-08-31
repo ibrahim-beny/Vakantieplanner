@@ -111,6 +111,22 @@ export interface SettlementPayment {
   paid_at: string // YYYY-MM-DD
 }
 
+/**
+ * Eén kostenpost zoals die meetelde in een settlement_payment — bevroren op
+ * het moment van afrekenen ("bon"), zodat de geschiedenis klopt blijft ook
+ * als de kostenpost later wijzigt of verwijderd wordt (expense_id dan null).
+ */
+export interface SettlementPaymentItem {
+  id: string
+  payment_id: string
+  expense_id: string | null
+  profile_id: string
+  title: string
+  category_name: string | null
+  amount: number
+  expense_date: string // YYYY-MM-DD
+}
+
 export interface TripData {
   trip: Trip
   days: TripDay[]
@@ -118,6 +134,7 @@ export interface TripData {
   expenses: Expense[]
   categories: ExpenseCategory[]
   settlementPayments: SettlementPayment[]
+  settlementPaymentItems: SettlementPaymentItem[]
   members: Profile[]
 }
 

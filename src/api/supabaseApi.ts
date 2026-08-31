@@ -9,6 +9,7 @@ import type {
   ExpensePatch,
   Profile,
   SettlementPayment,
+  SettlementPaymentItem,
   StayPatch,
   TripDay,
   TripData,
@@ -52,7 +53,7 @@ export const supabaseApi: TripApi = {
     const trip = trips?.[0]
     if (!trip) return null
 
-    const [membersRes, daysRes, staysRes, expensesRes, categoriesRes, paymentsRes] =
+    const [membersRes, daysRes, staysRes, expensesRes, categoriesRes, paymentsRes, paymentItemsRes] =
       await Promise.all([
         supabase
           .from('trip_members')
@@ -75,6 +76,10 @@ export const supabaseApi: TripApi = {
           .select('*')
           .eq('trip_id', trip.id)
           .order('paid_at'),
+        // settlement_payment_items heeft geen trip_id-kolom (alleen
+        // payment_id); deze app heeft altijd precies 1 trip, dus
+        // ongefilterd is hier correct (zie ook expense_shares hieronder).
+        supabase.from('settlement_payment_items').select('*'),
       ])
     if (membersRes.error) throw new Error(membersRes.error.message)
     if (daysRes.error) throw new Error(daysRes.error.message)
@@ -82,6 +87,7 @@ export const supabaseApi: TripApi = {
     if (expensesRes.error) throw new Error(expensesRes.error.message)
     if (categoriesRes.error) throw new Error(categoriesRes.error.message)
     if (paymentsRes.error) throw new Error(paymentsRes.error.message)
+    if (paymentItemsRes.error) throw new Error(paymentItemsRes.error.message)
 
     const members = (membersRes.data ?? [])
       .map((row) => row.profiles as unknown as Profile)
@@ -97,6 +103,7 @@ export const supabaseApi: TripApi = {
     const stays: TripStay[] = staysRes.data ?? []
     const categories: ExpenseCategory[] = categoriesRes.data ?? []
     const settlementPayments: SettlementPayment[] = paymentsRes.data ?? []
+    const settlementPaymentItems: SettlementPaymentItem[] = paymentItemsRes.data ?? []
 
     const expenses: Expense[] = (expensesRes.data ?? []).map((row) => {
       const { expense_shares, ...rest } = row as typeof row & {
@@ -105,7 +112,7 @@ export const supabaseApi: TripApi = {
       return { ...rest, shares: expense_shares ?? [] } as Expense
     })
 
-    return { trip, days, stays, expenses, categories, settlementPayments, members }
+    return { trip, days, stays, expenses, categories, settlementPayments, settlementPaymentItems, members }
   },
 
   async createDay(tripId, fields) {
@@ -302,16 +309,49 @@ export const supabaseApi: TripApi = {
 
   async recordSettlementPayment(tripId, fields) {
     const uid = requireIdentity()
+    const { items, ...rest } = fields
     const { data, error } = await supabase
       .from('settlement_payments')
-      .insert({ trip_id: tripId, ...fields, updated_by: uid })
+      .insert({ trip_id: tripId, ...rest, updated_by: uid })
       .select('id')
       .single()
     if (error) throw new Error(error.message)
+
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase
+        .from('settlement_payment_items')
+        .insert(items.map((item) => ({ payment_id: data.id, ...item })))
+      if (itemsError) throw new Error(itemsError.message)
+
+      for (const item of items) {
+        const { error: shareError } = await supabase
+          .from('expense_shares')
+          .update({ reminder_paid: true })
+          .eq('expense_id', item.expense_id)
+          .eq('profile_id', item.profile_id)
+        if (shareError) throw new Error(shareError.message)
+      }
+    }
     return data.id
   },
 
   async deleteSettlementPayment(paymentId) {
+    const { data: items, error: itemsError } = await supabase
+      .from('settlement_payment_items')
+      .select('expense_id, profile_id')
+      .eq('payment_id', paymentId)
+    if (itemsError) throw new Error(itemsError.message)
+
+    for (const item of items ?? []) {
+      if (!item.expense_id) continue
+      const { error: shareError } = await supabase
+        .from('expense_shares')
+        .update({ reminder_paid: false })
+        .eq('expense_id', item.expense_id)
+        .eq('profile_id', item.profile_id)
+      if (shareError) throw new Error(shareError.message)
+    }
+
     const { error } = await supabase.from('settlement_payments').delete().eq('id', paymentId)
     if (error) throw new Error(error.message)
   },

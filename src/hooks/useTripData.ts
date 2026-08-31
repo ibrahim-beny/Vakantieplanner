@@ -27,6 +27,14 @@ export interface TripMutations {
     to_profile: string
     amount: number
     paid_at: string
+    items: {
+      expense_id: string
+      profile_id: string
+      title: string
+      category_name: string | null
+      amount: number
+      expense_date: string
+    }[]
   }): Promise<string | null>
   deleteSettlementPayment(paymentId: string): Promise<void>
   toggleShareReminder(expenseId: string, profileId: string, reminderPaid: boolean): Promise<void>
@@ -110,11 +118,17 @@ export function useTripData() {
           },
           debouncedRefetch,
         )
-        // expense_shares heeft geen trip_id-kolom (alleen expense_id); deze
-        // app heeft altijd precies 1 trip, dus ongefilterd is hier correct.
+        // expense_shares en settlement_payment_items hebben geen
+        // trip_id-kolom (alleen expense_id resp. payment_id); deze app heeft
+        // altijd precies 1 trip, dus ongefilterd is hier correct.
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'expense_shares' },
+          debouncedRefetch,
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'settlement_payment_items' },
           debouncedRefetch,
         )
         .subscribe()

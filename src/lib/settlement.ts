@@ -1,4 +1,4 @@
-import type { Expense, ExpenseShare, SettlementPayment } from './types'
+import type { Expense, ExpenseCategory, ExpenseShare, SettlementPayment } from './types'
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 
@@ -71,30 +71,83 @@ export interface SettlementTransaction {
 }
 
 /**
- * Standaard greedy schuld-vereenvoudiging: koppel telkens de grootste
- * crediteur aan de grootste debiteur, tot alle saldo's binnen `epsilon` van
- * nul zitten.
+ * Rekent per paar deelnemers hun eigen gedeelde kostenposten tegen elkaar
+ * weg (in plaats van een netto-vereenvoudiging over de hele groep), zodat
+ * een voorgestelde afrekening altijd exact herleidbaar is tot de
+ * kostenposten tussen precies die twee personen — dat is nodig om bij
+ * "Markeer als betaald" de juiste terugbetaal-vinkjes te kunnen afvinken en
+ * een kloppende bon te tonen (zie computeSettlementItems).
  */
-export function simplifyDebts(balances: Balance[], epsilon = 0.01): SettlementTransaction[] {
-  const creditors = balances
-    .filter((b) => b.net > epsilon)
-    .map((b) => ({ id: b.profileId, amount: b.net }))
-    .sort((a, b) => b.amount - a.amount)
-  const debtors = balances
-    .filter((b) => b.net < -epsilon)
-    .map((b) => ({ id: b.profileId, amount: -b.net }))
-    .sort((a, b) => b.amount - a.amount)
-
+export function computeDirectSettlements(
+  expenses: Pick<Expense, 'amount' | 'paid_by' | 'shares'>[],
+  payments: Pick<SettlementPayment, 'from_profile' | 'to_profile' | 'amount'>[],
+  participantIds: string[],
+  epsilon = 0.01,
+): SettlementTransaction[] {
   const transactions: SettlementTransaction[] = []
-  let i = 0
-  let j = 0
-  while (i < debtors.length && j < creditors.length) {
-    const amount = round2(Math.min(debtors[i].amount, creditors[j].amount))
-    if (amount > epsilon) transactions.push({ from: debtors[i].id, to: creditors[j].id, amount })
-    debtors[i].amount -= amount
-    creditors[j].amount -= amount
-    if (debtors[i].amount <= epsilon) i++
-    if (creditors[j].amount <= epsilon) j++
+  for (let i = 0; i < participantIds.length; i++) {
+    for (let j = i + 1; j < participantIds.length; j++) {
+      const a = participantIds[i]
+      const b = participantIds[j]
+      // net > 0: a is b iets schuldig; net < 0: b is a iets schuldig.
+      let net = 0
+      for (const exp of expenses) {
+        if (exp.paid_by === b) {
+          net += exp.shares.find((s) => s.profile_id === a)?.share_amount ?? 0
+        } else if (exp.paid_by === a) {
+          net -= exp.shares.find((s) => s.profile_id === b)?.share_amount ?? 0
+        }
+      }
+      for (const p of payments) {
+        if (p.from_profile === a && p.to_profile === b) net -= p.amount
+        else if (p.from_profile === b && p.to_profile === a) net += p.amount
+      }
+      net = round2(net)
+      if (net > epsilon) transactions.push({ from: a, to: b, amount: net })
+      else if (net < -epsilon) transactions.push({ from: b, to: a, amount: -net })
+    }
   }
   return transactions
+}
+
+export interface SettlementItemDraft {
+  expense_id: string
+  profile_id: string
+  title: string
+  category_name: string | null
+  amount: number
+  expense_date: string
+}
+
+/**
+ * Bepaalt welke kostenposten meetellen als "van" en "naar" hun onderlinge
+ * saldo afrekenen: alle nog niet als terugbetaald afgevinkte aandelen op
+ * elkaars kostenposten, in beide richtingen (het bedrag van de afrekening
+ * is immers al het verschil daartussen). Wordt gebruikt om bij "Markeer als
+ * betaald" zowel de reminder_paid-vinkjes mee te zetten als de bon te
+ * vullen (settlement_payment_items).
+ */
+export function computeSettlementItems(
+  expenses: Pick<Expense, 'id' | 'title' | 'category_id' | 'expense_date' | 'paid_by' | 'shares'>[],
+  categories: Pick<ExpenseCategory, 'id' | 'name'>[],
+  from: string,
+  to: string,
+): SettlementItemDraft[] {
+  const categoryName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? null
+  const items: SettlementItemDraft[] = []
+  for (const exp of expenses) {
+    const debtor = exp.paid_by === to ? from : exp.paid_by === from ? to : null
+    if (!debtor) continue
+    const share = exp.shares.find((s) => s.profile_id === debtor && !s.reminder_paid)
+    if (!share || share.share_amount <= 0) continue
+    items.push({
+      expense_id: exp.id,
+      profile_id: debtor,
+      title: exp.title,
+      category_name: categoryName(exp.category_id),
+      amount: share.share_amount,
+      expense_date: exp.expense_date,
+    })
+  }
+  return items
 }

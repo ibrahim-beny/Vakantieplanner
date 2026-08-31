@@ -7,6 +7,7 @@ import type {
   ExpensePatch,
   Profile,
   SettlementPayment,
+  SettlementPaymentItem,
   TripData,
   TripDay,
   TripStay,
@@ -115,6 +116,7 @@ const categories: ExpenseCategory[] = SEED_CATEGORY_NAMES.map((name, i) => ({
 
 const expenses: Expense[] = []
 const settlementPayments: SettlementPayment[] = []
+const settlementPaymentItems: SettlementPaymentItem[] = []
 
 const trip = {
   id: TRIP_ID,
@@ -155,7 +157,16 @@ export const mockApi: TripApi = {
   async fetchTripData(): Promise<TripData> {
     await delay()
     sortDays()
-    return structuredClone({ trip, days, stays, expenses, categories, settlementPayments, members: MEMBERS })
+    return structuredClone({
+      trip,
+      days,
+      stays,
+      expenses,
+      categories,
+      settlementPayments,
+      settlementPaymentItems,
+      members: MEMBERS,
+    })
   },
 
   async createDay(_tripId, fields) {
@@ -304,17 +315,35 @@ export const mockApi: TripApi = {
 
   async recordSettlementPayment(_tripId, fields) {
     await delay()
+    const { items, ...rest } = fields
     const payment: SettlementPayment = {
       id: newId('payment'),
       trip_id: TRIP_ID,
-      ...fields,
+      ...rest,
     }
     settlementPayments.push(payment)
+
+    for (const item of items) {
+      settlementPaymentItems.push({ id: newId('spitem'), payment_id: payment.id, ...item })
+      const share = expenses
+        .find((e) => e.id === item.expense_id)
+        ?.shares.find((s) => s.profile_id === item.profile_id)
+      if (share) share.reminder_paid = true
+    }
     return payment.id
   },
 
   async deleteSettlementPayment(paymentId) {
     await delay()
+    for (const item of settlementPaymentItems.filter((it) => it.payment_id === paymentId)) {
+      const share = expenses
+        .find((e) => e.id === item.expense_id)
+        ?.shares.find((s) => s.profile_id === item.profile_id)
+      if (share) share.reminder_paid = false
+    }
+    for (let i = settlementPaymentItems.length - 1; i >= 0; i--) {
+      if (settlementPaymentItems[i].payment_id === paymentId) settlementPaymentItems.splice(i, 1)
+    }
     const index = settlementPayments.findIndex((p) => p.id === paymentId)
     if (index >= 0) settlementPayments.splice(index, 1)
   },

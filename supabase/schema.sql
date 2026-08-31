@@ -123,10 +123,26 @@ create table settlement_payments (
   created_at timestamptz default now()
 );
 
+-- Snapshot van de kostenposten die in één settlement_payment zijn meegenomen
+-- ("bon" in de geschiedenis). Titel/categorie/bedrag/datum staan hier
+-- bevroren op het moment van afrekenen, zodat de bon klopt blijft ook als de
+-- kostenpost later wijzigt of verwijderd wordt (expense_id wordt dan null).
+create table settlement_payment_items (
+  id uuid primary key default gen_random_uuid(),
+  payment_id uuid references settlement_payments(id) on delete cascade,
+  expense_id uuid references expenses(id) on delete set null,
+  profile_id uuid references profiles(id) not null,
+  title text not null,
+  category_name text,
+  amount numeric not null check (amount >= 0),
+  expense_date date not null
+);
+
 create index expenses_trip_id_idx on expenses(trip_id);
 create index expense_shares_expense_id_idx on expense_shares(expense_id);
 create index expense_categories_trip_id_idx on expense_categories(trip_id);
 create index settlement_payments_trip_id_idx on settlement_payments(trip_id);
+create index settlement_payment_items_payment_id_idx on settlement_payment_items(payment_id);
 
 -- updated_at automatisch bijwerken bij elke wijziging aan een dag/verblijf/kostenpost
 create or replace function set_trip_day_updated_at()
@@ -161,4 +177,4 @@ create trigger expenses_updated_at
 -- Realtime: laat de app wijzigingen van andere gebruikers direct
 -- binnenkrijgen (via websockets), zonder dat iemand hoeft te verversen.
 -- ============================================================
-alter publication supabase_realtime add table trip_days, trip_stays, expenses, expense_categories, settlement_payments, expense_shares;
+alter publication supabase_realtime add table trip_days, trip_stays, expenses, expense_categories, settlement_payments, expense_shares, settlement_payment_items;

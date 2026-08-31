@@ -122,6 +122,7 @@ export default function App() {
           stays={data.stays}
           members={data.members}
           settlementPayments={data.settlementPayments}
+          settlementPaymentItems={data.settlementPaymentItems}
           mutations={mutations}
         />
       )}

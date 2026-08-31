@@ -39,11 +39,30 @@ export interface TripApi {
   /** Bestaande kostenposten met deze categorie vallen terug op "geen categorie". */
   deleteCategory(categoryId: string): Promise<void>
 
-  /** Registreert een daadwerkelijke betaling om een saldo te (deels) vereffenen. */
+  /**
+   * Registreert een daadwerkelijke betaling om een saldo te (deels) te
+   * vereffenen. `items` is de bon: de kostenposten die hierin meetellen —
+   * voor elk item wordt de bijbehorende expense_shares.reminder_paid direct
+   * mee op true gezet.
+   */
   recordSettlementPayment(
     tripId: string,
-    fields: { from_profile: string; to_profile: string; amount: number; paid_at: string },
+    fields: {
+      from_profile: string
+      to_profile: string
+      amount: number
+      paid_at: string
+      items: {
+        expense_id: string
+        profile_id: string
+        title: string
+        category_name: string | null
+        amount: number
+        expense_date: string
+      }[]
+    },
   ): Promise<string>
+  /** Verwijdert de afrekening én zet de reminder_paid-vinkjes van de bon weer terug op false. */
   deleteSettlementPayment(paymentId: string): Promise<void>
 
   /**
