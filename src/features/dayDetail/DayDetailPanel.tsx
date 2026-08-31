@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatEuro } from '../../lib/format'
 import { findStayForDate, nightsOf } from '../../lib/stays'
-import type { Profile, TripDay, TripStay } from '../../lib/types'
+import type { Expense, ExpenseCategory, Profile, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { ActivityTagInput } from './ActivityTagInput'
 import { PlaceSearchInput } from './PlaceSearchInput'
@@ -39,12 +39,16 @@ export function DayDetailPanel({
   day,
   members,
   stays,
+  expenses,
+  categories,
   mutations,
   onClose,
 }: {
   day: TripDay
   members: Profile[]
   stays: TripStay[]
+  expenses: Expense[]
+  categories: ExpenseCategory[]
   mutations: TripMutations
   onClose: () => void
 }) {
@@ -120,6 +124,7 @@ export function DayDetailPanel({
 
   const editorName = members.find((m) => m.id === day.updated_by)?.display_name
   const stay = findStayForDate(stays, day.date)
+  const linkedExpense = stay ? (expenses.find((e) => e.stay_id === stay.id) ?? null) : null
 
   return (
     <div className="fixed inset-0 z-40">
@@ -181,13 +186,13 @@ export function DayDetailPanel({
                 className="w-full border-[1.5px] border-edge bg-[rgba(42,36,32,0.03)] px-3 py-2.5 text-left font-mono text-[13px] text-inkbody hover:border-canyon"
               >
                 {stay.location_name} — {nightsOf(stay)} nacht{nightsOf(stay) === 1 ? '' : 'en'}
-                {stay.cost != null && <> · {formatEuro(stay.cost)}</>}
+                {linkedExpense != null && <> · {formatEuro(linkedExpense.amount)}</>}
                 <br />
                 <span className="text-[11px] text-muted">Klik om dit verblijf te bewerken.</span>
               </button>
             ) : (
               <p className="font-mono text-[11px] text-muted">
-                Geen verblijf gekoppeld aan deze dag — voeg er een toe in de Budget-tab.
+                Geen verblijf gekoppeld aan deze dag — voeg er een toe in de Kosten-tab.
               </p>
             )}
           </div>
@@ -240,6 +245,8 @@ export function DayDetailPanel({
         <StayForm
           stay={stay}
           members={members}
+          categories={categories}
+          expenses={expenses}
           mutations={mutations}
           onClose={() => setEditingStay(false)}
         />

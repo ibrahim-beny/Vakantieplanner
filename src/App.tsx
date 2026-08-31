@@ -5,7 +5,7 @@ import { Header, type View } from './components/Header'
 import { CalendarView } from './features/calendar/CalendarView'
 import { TimelineView } from './features/timeline/TimelineView'
 import { MapView } from './features/map/MapView'
-import { BudgetView } from './features/budget/BudgetView'
+import { ExpensesView } from './features/expenses/ExpensesView'
 import { DayDetailPanel } from './features/dayDetail/DayDetailPanel'
 import { ShiftDaysModal } from './features/shift/ShiftDaysModal'
 import { useTripData } from './hooks/useTripData'
@@ -93,6 +93,8 @@ export default function App() {
           days={data.days}
           stays={data.stays}
           members={data.members}
+          expenses={data.expenses}
+          categories={data.categories}
           onOpenDay={setOpenDayId}
           mutations={mutations}
           cityColorMap={cityColorMap}
@@ -103,6 +105,8 @@ export default function App() {
           days={data.days}
           stays={data.stays}
           members={data.members}
+          expenses={data.expenses}
+          categories={data.categories}
           mutations={mutations}
           cityColorMap={cityColorMap}
           onOpenDay={setOpenDayId}
@@ -111,8 +115,15 @@ export default function App() {
         />
       )}
       {view === 'kaart' && <MapView days={data.days} onOpenDay={setOpenDayId} />}
-      {view === 'budget' && (
-        <BudgetView stays={data.stays} members={data.members} mutations={mutations} />
+      {view === 'kosten' && (
+        <ExpensesView
+          expenses={data.expenses}
+          categories={data.categories}
+          stays={data.stays}
+          members={data.members}
+          settlementPayments={data.settlementPayments}
+          mutations={mutations}
+        />
       )}
 
       {openDay && (
@@ -120,6 +131,8 @@ export default function App() {
           day={openDay}
           members={data.members}
           stays={data.stays}
+          expenses={data.expenses}
+          categories={data.categories}
           mutations={mutations}
           onClose={() => setOpenDayId(null)}
         />

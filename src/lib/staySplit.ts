@@ -42,7 +42,7 @@ export function computeStayAdjustments(stays: TripStay[], selectedDates: string[
       // suffix-overlap: kort de stay in aan het eind (nieuwe checkoutdag = eerste geselecteerde dag)
       adjustments.push({ kind: 'trim', stay, patch: { end_date: overlapStart } })
     } else {
-      // strikte middenoverlap: splits in kop (bestaand record, behoudt cost/booked) + staart (nieuw, leeg)
+      // strikte middenoverlap: splits in kop (bestaand record, behoudt booked) + staart (nieuw, leeg)
       adjustments.push({
         kind: 'split',
         stay,
@@ -53,10 +53,7 @@ export function computeStayAdjustments(stays: TripStay[], selectedDates: string[
           end_date: stay.end_date,
           lat: stay.lat,
           lng: stay.lng,
-          cost: null,
           booked: false,
-          booked_by: null,
-          paid_back: false,
         },
       })
     }

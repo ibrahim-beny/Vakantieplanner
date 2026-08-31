@@ -3,9 +3,8 @@ import { addDaysISO, formatDayMonth } from '../../lib/dates'
 import { bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
 import { findStayForDate } from '../../lib/stays'
 import { computeStayAdjustments, describeAdjustment } from '../../lib/staySplit'
-import { getStoredProfileId } from '../../lib/identity'
 import { colorForCity, type CityColor } from '../../lib/cityColors'
-import type { Profile, TripDay, TripStay } from '../../lib/types'
+import type { Expense, ExpenseCategory, Profile, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { useDateRangeSelection } from '../../hooks/useDateRangeSelection'
 import { ProgressLine } from './ProgressLine'
@@ -18,6 +17,8 @@ export function TimelineView({
   days,
   stays,
   members,
+  expenses,
+  categories,
   mutations,
   onOpenDay,
   onAddDay,
@@ -27,6 +28,8 @@ export function TimelineView({
   days: TripDay[]
   stays: TripStay[]
   members: Profile[]
+  expenses: Expense[]
+  categories: ExpenseCategory[]
   mutations: TripMutations
   onOpenDay: (id: string) => void
   onAddDay: () => void
@@ -37,7 +40,7 @@ export function TimelineView({
     members.find((m) => m.id === id)?.display_name ?? 'onbekend'
 
   function cycleBooking(stay: TripStay) {
-    void mutations.updateStay(stay.id, nextBookingPatch(stay, getStoredProfileId()))
+    void mutations.updateStay(stay.id, nextBookingPatch(stay))
   }
 
   const selection = useDateRangeSelection()
@@ -230,6 +233,8 @@ export function TimelineView({
         <StayForm
           stay={null}
           members={members}
+          categories={categories}
+          expenses={expenses}
           mutations={mutations}
           initialDates={stayFormPrefill ?? undefined}
           onClose={() => setStayFormPrefill(undefined)}

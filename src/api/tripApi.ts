@@ -1,4 +1,4 @@
-import type { DayPatch, StayPatch, TripData } from '../lib/types'
+import type { DayPatch, ExpenseInput, ExpensePatch, StayPatch, TripData } from '../lib/types'
 
 /**
  * Datalaag-contract. Productie praat met Supabase (supabaseApi); in dev kan
@@ -26,4 +26,29 @@ export interface TripApi {
   ): Promise<string>
   updateStay(stayId: string, patch: StayPatch): Promise<void>
   deleteStay(stayId: string): Promise<void>
+
+  /** Maakt een kostenpost (+ shares) aan en geeft het nieuwe expense-id terug. */
+  createExpense(tripId: string, fields: ExpenseInput): Promise<string>
+  /** Wijzigt een kostenpost; als `patch.shares` meegegeven is, vervangt dat alle shares. */
+  updateExpense(expenseId: string, patch: ExpensePatch): Promise<void>
+  deleteExpense(expenseId: string): Promise<void>
+
+  /** Maakt een categorie aan en geeft het nieuwe category-id terug. */
+  createCategory(tripId: string, name: string): Promise<string>
+  renameCategory(categoryId: string, name: string): Promise<void>
+  /** Bestaande kostenposten met deze categorie vallen terug op "geen categorie". */
+  deleteCategory(categoryId: string): Promise<void>
+
+  /** Registreert een daadwerkelijke betaling om een saldo te (deels) vereffenen. */
+  recordSettlementPayment(
+    tripId: string,
+    fields: { from_profile: string; to_profile: string; amount: number; paid_at: string },
+  ): Promise<string>
+  deleteSettlementPayment(paymentId: string): Promise<void>
+
+  /**
+   * Persoonlijk "al terugbetaald"-vinkje op één share, los van de echte
+   * saldoberekening en settlement_payments — puur cosmetisch.
+   */
+  toggleShareReminder(expenseId: string, profileId: string, reminderPaid: boolean): Promise<void>
 }

@@ -19,14 +19,14 @@ import {
 import { BOOKING_BADGES, bookingBadge, nextBookingPatch } from '../../lib/bookingBadge'
 import { findStayForDate } from '../../lib/stays'
 import { computeStayAdjustments, describeAdjustment } from '../../lib/staySplit'
-import { getStoredProfileId } from '../../lib/identity'
 import { colorForCity, type CityColor } from '../../lib/cityColors'
-import type { ClipboardDay, Profile, Trip, TripDay, TripStay } from '../../lib/types'
+import type { ClipboardDay, Expense, ExpenseCategory, Profile, Trip, TripDay, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
 import { useDateRangeSelection } from '../../hooks/useDateRangeSelection'
 import { QuickAddModal } from './QuickAddModal'
 import { PasteModal } from './PasteModal'
 import { StayForm } from '../budget/StayForm'
+import { ExpenseForm } from '../expenses/ExpenseForm'
 import { SelectionActionBar } from '../../components/SelectionActionBar'
 import { ConfirmModal } from '../../components/ConfirmModal'
 
@@ -48,6 +48,8 @@ export function CalendarView({
   days,
   stays,
   members,
+  expenses,
+  categories,
   onOpenDay,
   mutations,
   cityColorMap,
@@ -56,6 +58,8 @@ export function CalendarView({
   days: TripDay[]
   stays: TripStay[]
   members: Profile[]
+  expenses: Expense[]
+  categories: ExpenseCategory[]
   onOpenDay: (id: string) => void
   mutations: TripMutations
   cityColorMap: Map<string, CityColor>
@@ -84,6 +88,9 @@ export function CalendarView({
     { start_date: string; end_date: string } | null | undefined
   >(undefined)
   const [editingStay, setEditingStay] = useState<TripStay | null>(null)
+  const [expenseFormPrefill, setExpenseFormPrefill] = useState<{ expense_date: string } | null | undefined>(
+    undefined,
+  )
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDetachOpen, setConfirmDetachOpen] = useState(false)
 
@@ -149,7 +156,7 @@ export function CalendarView({
   }, [contextMenu])
 
   function cycleBooking(stay: TripStay) {
-    void mutations.updateStay(stay.id, nextBookingPatch(stay, getStoredProfileId()))
+    void mutations.updateStay(stay.id, nextBookingPatch(stay))
   }
 
   async function handleMove(dayId: string, targetDate: string) {
@@ -382,7 +389,7 @@ export function CalendarView({
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
         {BOOKING_BADGES.map((b) => (
           <p
-            key={b.status}
+            key={b.label}
             className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.06em] text-muted"
           >
             <span
@@ -470,6 +477,16 @@ export function CalendarView({
               Plak hier
             </button>
           )}
+          <button
+            type="button"
+            className="block w-full px-4 py-2 text-left text-[14px] text-ink hover:bg-sand"
+            onClick={() => {
+              setExpenseFormPrefill({ expense_date: contextMenu.date })
+              setContextMenu(null)
+            }}
+          >
+            Kosten toevoegen
+          </button>
           {!dayByDate.get(contextMenu.date) && !clipboard && (
             <p className="px-4 py-2 font-mono text-[12px] text-muted">Niets te plakken</p>
           )}
@@ -535,6 +552,8 @@ export function CalendarView({
         <StayForm
           stay={null}
           members={members}
+          categories={categories}
+          expenses={expenses}
           mutations={mutations}
           initialDates={stayFormPrefill ?? undefined}
           onClose={() => setStayFormPrefill(undefined)}
@@ -545,8 +564,22 @@ export function CalendarView({
         <StayForm
           stay={editingStay}
           members={members}
+          categories={categories}
+          expenses={expenses}
           mutations={mutations}
           onClose={() => setEditingStay(null)}
+        />
+      )}
+
+      {expenseFormPrefill !== undefined && (
+        <ExpenseForm
+          expense={null}
+          members={members}
+          categories={categories}
+          stays={stays}
+          mutations={mutations}
+          prefill={expenseFormPrefill ?? undefined}
+          onClose={() => setExpenseFormPrefill(undefined)}
         />
       )}
 

@@ -1,7 +1,16 @@
 import { addDaysISO } from '../lib/dates'
 import { getStoredProfileId } from '../lib/identity'
 import type { TripApi } from './tripApi'
-import type { Profile, TripData, TripDay, TripStay } from '../lib/types'
+import type {
+  Expense,
+  ExpenseCategory,
+  ExpensePatch,
+  Profile,
+  SettlementPayment,
+  TripData,
+  TripDay,
+  TripStay,
+} from '../lib/types'
 
 /**
  * In-memory mock van de datalaag, UITSLUITEND voor lokale verificatie
@@ -10,8 +19,10 @@ import type { Profile, TripData, TripDay, TripStay } from '../lib/types'
  * als supabase/seed.sql.
  */
 
-const IBRAHIM: Profile = { id: 'user-ibrahim', display_name: 'Ibrahim', color: '#B5502F' }
-const REISGENOOT: Profile = { id: 'user-reisgenoot', display_name: 'Zaid', color: '#2C3B4A' }
+const IBRAHIM: Profile = { id: 'user-ibrahim', display_name: 'Ibrahim', color: '#B5502F', is_guest: false }
+const REISGENOOT: Profile = { id: 'user-reisgenoot', display_name: 'Zaid', color: '#2C3B4A', is_guest: false }
+const YOUNES: Profile = { id: 'user-younes', display_name: 'Younes', color: '#7A8B69', is_guest: true }
+const MEMBERS = [IBRAHIM, REISGENOOT, YOUNES]
 
 const TRIP_ID = 'trip-1'
 
@@ -61,6 +72,8 @@ const SEED_STAYS: SeedStay[] = [
   ['Budget motel, Los Angeles', '2026-09-18', '2026-09-19'],
 ]
 
+const SEED_CATEGORY_NAMES = ['Verblijf', 'Auto', 'Vlucht', 'Eten', 'Overig']
+
 let nextId = 1
 const newId = (prefix: string) => `${prefix}-${nextId++}`
 
@@ -87,13 +100,21 @@ const stays: TripStay[] = SEED_STAYS.map(([location_name, start_date, end_date])
   end_date,
   lat: null,
   lng: null,
-  cost: null,
   booked: false,
-  booked_by: null,
-  paid_back: false,
   updated_by: null,
   updated_at: new Date().toISOString(),
 }))
+
+const categories: ExpenseCategory[] = SEED_CATEGORY_NAMES.map((name, i) => ({
+  id: newId('cat'),
+  trip_id: TRIP_ID,
+  name,
+  color: '#8A8577',
+  sort_order: i,
+}))
+
+const expenses: Expense[] = []
+const settlementPayments: SettlementPayment[] = []
 
 const trip = {
   id: TRIP_ID,
@@ -119,6 +140,11 @@ const requireStay = (stayId: string): TripStay => {
   if (!stay) throw new Error('Verblijf niet gevonden.')
   return stay
 }
+const requireExpense = (expenseId: string): Expense => {
+  const expense = expenses.find((e) => e.id === expenseId)
+  if (!expense) throw new Error('Kostenpost niet gevonden.')
+  return expense
+}
 const stamp = (row: { updated_by: string | null; updated_at: string }) => {
   row.updated_by = getStoredProfileId()
   row.updated_at = new Date().toISOString()
@@ -129,7 +155,7 @@ export const mockApi: TripApi = {
   async fetchTripData(): Promise<TripData> {
     await delay()
     sortDays()
-    return structuredClone({ trip, days, stays, members: [IBRAHIM, REISGENOOT] })
+    return structuredClone({ trip, days, stays, expenses, categories, settlementPayments, members: MEMBERS })
   },
 
   async createDay(_tripId, fields) {
@@ -191,10 +217,7 @@ export const mockApi: TripApi = {
       trip_id: TRIP_ID,
       lat: null,
       lng: null,
-      cost: null,
       booked: false,
-      booked_by: null,
-      paid_back: false,
       updated_by: null,
       updated_at: '',
       ...fields,
@@ -215,5 +238,91 @@ export const mockApi: TripApi = {
     await delay()
     const index = stays.findIndex((s) => s.id === stayId)
     if (index >= 0) stays.splice(index, 1)
+  },
+
+  async createExpense(_tripId, fields) {
+    await delay()
+    const { shares, ...rest } = fields
+    const expense: Expense = {
+      id: newId('expense'),
+      trip_id: TRIP_ID,
+      stay_id: null,
+      notes: null,
+      updated_by: null,
+      updated_at: '',
+      ...rest,
+      shares: shares.map((s) => ({ ...s, reminder_paid: false })),
+    }
+    stamp(expense)
+    expenses.push(expense)
+    return expense.id
+  },
+
+  async updateExpense(expenseId, patch: ExpensePatch) {
+    await delay()
+    const expense = requireExpense(expenseId)
+    const { shares, ...rest } = patch
+    Object.assign(expense, rest)
+    if (shares) expense.shares = shares.map((s) => ({ ...s, reminder_paid: false }))
+    stamp(expense)
+  },
+
+  async deleteExpense(expenseId) {
+    await delay()
+    const index = expenses.findIndex((e) => e.id === expenseId)
+    if (index >= 0) expenses.splice(index, 1)
+  },
+
+  async createCategory(_tripId, name) {
+    await delay()
+    const nextSortOrder = categories.reduce((max, c) => Math.max(max, c.sort_order), -1) + 1
+    const category: ExpenseCategory = {
+      id: newId('cat'),
+      trip_id: TRIP_ID,
+      name,
+      color: '#8A8577',
+      sort_order: nextSortOrder,
+    }
+    categories.push(category)
+    return category.id
+  },
+
+  async renameCategory(categoryId, name) {
+    await delay()
+    const category = categories.find((c) => c.id === categoryId)
+    if (category) category.name = name
+  },
+
+  async deleteCategory(categoryId) {
+    await delay()
+    const index = categories.findIndex((c) => c.id === categoryId)
+    if (index >= 0) categories.splice(index, 1)
+    for (const expense of expenses) {
+      if (expense.category_id === categoryId) expense.category_id = null
+    }
+  },
+
+  async recordSettlementPayment(_tripId, fields) {
+    await delay()
+    const payment: SettlementPayment = {
+      id: newId('payment'),
+      trip_id: TRIP_ID,
+      ...fields,
+    }
+    settlementPayments.push(payment)
+    return payment.id
+  },
+
+  async deleteSettlementPayment(paymentId) {
+    await delay()
+    const index = settlementPayments.findIndex((p) => p.id === paymentId)
+    if (index >= 0) settlementPayments.splice(index, 1)
+  },
+
+  async toggleShareReminder(expenseId, profileId, reminderPaid) {
+    await delay()
+    const expense = requireExpense(expenseId)
+    const share = expense.shares.find((s) => s.profile_id === profileId)
+    if (share) share.reminder_paid = reminderPaid
   },
 }

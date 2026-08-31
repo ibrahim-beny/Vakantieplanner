@@ -2,13 +2,13 @@ import { clearStoredProfileId } from '../lib/identity'
 import { formatRange } from '../lib/dates'
 import type { Profile, TripData } from '../lib/types'
 
-export type View = 'kalender' | 'tijdlijn' | 'kaart' | 'budget'
+export type View = 'kalender' | 'tijdlijn' | 'kaart' | 'kosten'
 
 const NAV: { key: View; label: string }[] = [
   { key: 'kalender', label: 'Kalender' },
   { key: 'tijdlijn', label: 'Tijdlijn' },
   { key: 'kaart', label: 'Kaart' },
-  { key: 'budget', label: 'Budget' },
+  { key: 'kosten', label: 'Kosten' },
 ]
 
 export function Header({

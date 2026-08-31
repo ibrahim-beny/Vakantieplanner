@@ -2,7 +2,18 @@ import { supabase } from '../lib/supabase'
 import { addDaysISO } from '../lib/dates'
 import { getStoredProfileId } from '../lib/identity'
 import type { TripApi } from './tripApi'
-import type { DayPatch, Profile, StayPatch, TripDay, TripData, TripStay } from '../lib/types'
+import type {
+  DayPatch,
+  Expense,
+  ExpenseCategory,
+  ExpensePatch,
+  Profile,
+  SettlementPayment,
+  StayPatch,
+  TripDay,
+  TripData,
+  TripStay,
+} from '../lib/types'
 
 function requireIdentity(): string {
   const id = getStoredProfileId()
@@ -41,17 +52,36 @@ export const supabaseApi: TripApi = {
     const trip = trips?.[0]
     if (!trip) return null
 
-    const [membersRes, daysRes, staysRes] = await Promise.all([
-      supabase
-        .from('trip_members')
-        .select('profiles(id, display_name, color)')
-        .eq('trip_id', trip.id),
-      supabase.from('trip_days').select('*').eq('trip_id', trip.id).order('date'),
-      supabase.from('trip_stays').select('*').eq('trip_id', trip.id).order('start_date'),
-    ])
+    const [membersRes, daysRes, staysRes, expensesRes, categoriesRes, paymentsRes] =
+      await Promise.all([
+        supabase
+          .from('trip_members')
+          .select('profiles(id, display_name, color, is_guest)')
+          .eq('trip_id', trip.id),
+        supabase.from('trip_days').select('*').eq('trip_id', trip.id).order('date'),
+        supabase.from('trip_stays').select('*').eq('trip_id', trip.id).order('start_date'),
+        supabase
+          .from('expenses')
+          .select('*, expense_shares(profile_id, share_amount, reminder_paid)')
+          .eq('trip_id', trip.id)
+          .order('expense_date'),
+        supabase
+          .from('expense_categories')
+          .select('*')
+          .eq('trip_id', trip.id)
+          .order('sort_order'),
+        supabase
+          .from('settlement_payments')
+          .select('*')
+          .eq('trip_id', trip.id)
+          .order('paid_at'),
+      ])
     if (membersRes.error) throw new Error(membersRes.error.message)
     if (daysRes.error) throw new Error(daysRes.error.message)
     if (staysRes.error) throw new Error(staysRes.error.message)
+    if (expensesRes.error) throw new Error(expensesRes.error.message)
+    if (categoriesRes.error) throw new Error(categoriesRes.error.message)
+    if (paymentsRes.error) throw new Error(paymentsRes.error.message)
 
     const members = (membersRes.data ?? [])
       .map((row) => row.profiles as unknown as Profile)
@@ -65,8 +95,17 @@ export const supabaseApi: TripApi = {
     }))
 
     const stays: TripStay[] = staysRes.data ?? []
+    const categories: ExpenseCategory[] = categoriesRes.data ?? []
+    const settlementPayments: SettlementPayment[] = paymentsRes.data ?? []
 
-    return { trip, days, stays, members }
+    const expenses: Expense[] = (expensesRes.data ?? []).map((row) => {
+      const { expense_shares, ...rest } = row as typeof row & {
+        expense_shares: { profile_id: string; share_amount: number; reminder_paid: boolean }[]
+      }
+      return { ...rest, shares: expense_shares ?? [] } as Expense
+    })
+
+    return { trip, days, stays, expenses, categories, settlementPayments, members }
   },
 
   async createDay(tripId, fields) {
@@ -179,6 +218,110 @@ export const supabaseApi: TripApi = {
 
   async deleteStay(stayId) {
     const { error } = await supabase.from('trip_stays').delete().eq('id', stayId)
+    if (error) throw new Error(error.message)
+  },
+
+  async createExpense(tripId, fields) {
+    const uid = requireIdentity()
+    const { shares, ...rest } = fields
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert({ trip_id: tripId, ...rest, updated_by: uid })
+      .select('id')
+      .single()
+    if (error) throw new Error(error.message)
+
+    if (shares.length > 0) {
+      const { error: sharesError } = await supabase
+        .from('expense_shares')
+        .insert(shares.map((s) => ({ expense_id: data.id, ...s })))
+      if (sharesError) throw new Error(sharesError.message)
+    }
+    return data.id
+  },
+
+  async updateExpense(expenseId, patch: ExpensePatch) {
+    const { shares, ...rest } = patch
+    if (Object.keys(rest).length > 0) {
+      const { error } = await supabase.from('expenses').update(stamped(rest)).eq('id', expenseId)
+      if (error) throw new Error(error.message)
+    }
+
+    if (shares) {
+      const { error: deleteError } = await supabase
+        .from('expense_shares')
+        .delete()
+        .eq('expense_id', expenseId)
+      if (deleteError) throw new Error(deleteError.message)
+
+      if (shares.length > 0) {
+        const { error: insertError } = await supabase
+          .from('expense_shares')
+          .insert(shares.map((s) => ({ expense_id: expenseId, ...s })))
+        if (insertError) throw new Error(insertError.message)
+      }
+    }
+  },
+
+  async deleteExpense(expenseId) {
+    const { error } = await supabase.from('expenses').delete().eq('id', expenseId)
+    if (error) throw new Error(error.message)
+  },
+
+  async createCategory(tripId, name) {
+    const { data: existing, error: existingError } = await supabase
+      .from('expense_categories')
+      .select('sort_order')
+      .eq('trip_id', tripId)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+    if (existingError) throw new Error(existingError.message)
+    const nextSortOrder = (existing?.[0]?.sort_order ?? -1) + 1
+
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .insert({ trip_id: tripId, name, sort_order: nextSortOrder })
+      .select('id')
+      .single()
+    if (error) throw new Error(error.message)
+    return data.id
+  },
+
+  async renameCategory(categoryId, name) {
+    const { error } = await supabase
+      .from('expense_categories')
+      .update({ name })
+      .eq('id', categoryId)
+    if (error) throw new Error(error.message)
+  },
+
+  async deleteCategory(categoryId) {
+    const { error } = await supabase.from('expense_categories').delete().eq('id', categoryId)
+    if (error) throw new Error(error.message)
+  },
+
+  async recordSettlementPayment(tripId, fields) {
+    const uid = requireIdentity()
+    const { data, error } = await supabase
+      .from('settlement_payments')
+      .insert({ trip_id: tripId, ...fields, updated_by: uid })
+      .select('id')
+      .single()
+    if (error) throw new Error(error.message)
+    return data.id
+  },
+
+  async deleteSettlementPayment(paymentId) {
+    const { error } = await supabase.from('settlement_payments').delete().eq('id', paymentId)
+    if (error) throw new Error(error.message)
+  },
+
+  async toggleShareReminder(expenseId, profileId, reminderPaid) {
+    const { error } = await supabase
+      .from('expense_shares')
+      .update({ reminder_paid: reminderPaid })
+      .eq('expense_id', expenseId)
+      .eq('profile_id', profileId)
     if (error) throw new Error(error.message)
   },
 }

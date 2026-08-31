@@ -3,9 +3,12 @@ import type { Profile } from '../../lib/types'
 
 /**
  * Geen login: gewoon kiezen wie je bent, puur om bij te houden wie een dag
- * bewerkte. Iedereen met de link kan hier elk profiel kiezen.
+ * bewerkte. Iedereen met de link kan hier elk profiel kiezen — behalve
+ * gast-deelnemers (bv. iemand die alleen meetelt in de kostenverdeling),
+ * die kunnen hier niet gekozen worden.
  */
 export function WhoAmIScreen({ members }: { members: Profile[] }) {
+  const selectableMembers = members.filter((m) => !m.is_guest)
   return (
     <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-cream p-4">
       <svg
@@ -50,7 +53,7 @@ export function WhoAmIScreen({ members }: { members: Profile[] }) {
         <div className="mt-7 animate-fade">
           <p className="field-label">Wie ben jij?</p>
           <div className="mt-3 flex flex-col gap-2.5">
-            {members.map((member) => (
+            {selectableMembers.map((member) => (
               <button
                 key={member.id}
                 type="button"

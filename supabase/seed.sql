@@ -9,11 +9,14 @@ do $$
 declare
   user1 uuid := gen_random_uuid();
   user2 uuid := gen_random_uuid();
+  user3 uuid := gen_random_uuid();
   v_trip uuid;
+  cat_verblijf uuid;
 begin
-  insert into profiles (id, display_name, color) values
-    (user1, 'Ibrahim', '#B5502F'),
-    (user2, 'Zaid', '#2C3B4A');
+  insert into profiles (id, display_name, color, is_guest) values
+    (user1, 'Ibrahim', '#B5502F', false),
+    (user2, 'Zaid', '#2C3B4A', false),
+    (user3, 'Younes', '#7A8B69', true);
 
   insert into trips (name, start_date, end_date, created_by)
   values ('USA Roadtrip september 2026', '2026-09-01', '2026-09-19', user1)
@@ -21,7 +24,17 @@ begin
 
   insert into trip_members (trip_id, user_id, role) values
     (v_trip, user1, 'owner'),
-    (v_trip, user2, 'editor');
+    (v_trip, user2, 'editor'),
+    (v_trip, user3, 'editor');
+
+  insert into expense_categories (trip_id, name, sort_order) values
+    (v_trip, 'Verblijf', 0),
+    (v_trip, 'Auto', 1),
+    (v_trip, 'Vlucht', 2),
+    (v_trip, 'Eten', 3),
+    (v_trip, 'Overig', 4);
+
+  select id into cat_verblijf from expense_categories where trip_id = v_trip and name = 'Verblijf';
 
   insert into trip_days
     (trip_id, date, location_name, lat, lng, activities, notes, updated_by)

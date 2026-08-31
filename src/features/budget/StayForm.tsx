@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { PlaceSearchInput } from '../dayDetail/PlaceSearchInput'
-import type { Profile, StayPatch, TripStay } from '../../lib/types'
+import { formatEuro } from '../../lib/format'
+import { getStoredProfileId } from '../../lib/identity'
+import { computeEqualShares } from '../../lib/settlement'
+import type { Expense, ExpenseCategory, Profile, StayPatch, TripStay } from '../../lib/types'
 import type { TripMutations } from '../../hooks/useTripData'
+import { ExpenseForm } from '../expenses/ExpenseForm'
 
 interface Draft {
   location_name: string
@@ -9,10 +13,9 @@ interface Draft {
   lng: string
   start_date: string
   end_date: string
-  cost: string
   booked: boolean
-  booked_by: string
-  paid_back: boolean
+  cost: string
+  costPaidBy: string
 }
 
 function toDraft(stay: TripStay | null, initialDates?: { start_date: string; end_date: string }): Draft {
@@ -22,10 +25,9 @@ function toDraft(stay: TripStay | null, initialDates?: { start_date: string; end
     lng: stay?.lng?.toString() ?? '',
     start_date: stay?.start_date ?? initialDates?.start_date ?? '',
     end_date: stay?.end_date ?? initialDates?.end_date ?? '',
-    cost: stay?.cost?.toString() ?? '',
     booked: stay?.booked ?? false,
-    booked_by: stay?.booked_by ?? '',
-    paid_back: stay?.paid_back ?? false,
+    cost: '',
+    costPaidBy: getStoredProfileId() ?? '',
   }
 }
 
@@ -39,12 +41,16 @@ const toNumber = (s: string): number | null => {
 export function StayForm({
   stay,
   members,
+  categories,
+  expenses,
   mutations,
   onClose,
   initialDates,
 }: {
   stay: TripStay | null
   members: Profile[]
+  categories: ExpenseCategory[]
+  expenses: Expense[]
   mutations: TripMutations
   onClose: () => void
   /** Vooringevulde van/tot-datums bij het aanmaken vanuit een dagselectie (genegeerd bij bewerken). */
@@ -52,11 +58,15 @@ export function StayForm({
 }) {
   const [draft, setDraft] = useState<Draft>(() => toDraft(stay, initialDates))
   const [busy, setBusy] = useState(false)
+  const [costFormOpen, setCostFormOpen] = useState(false)
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
 
   const isNew = stay === null
   const canSave = draft.location_name.trim() !== '' && draft.start_date !== '' && draft.end_date !== ''
   const rangeInvalid = draft.start_date !== '' && draft.end_date !== '' && draft.end_date <= draft.start_date
+  const linkedExpense = stay ? (expenses.find((e) => e.stay_id === stay.id) ?? null) : null
+  const verblijfCategoryId =
+    categories.find((c) => c.name.toLowerCase() === 'verblijf')?.id ?? null
 
   function buildPatch(): StayPatch {
     return {
@@ -65,7 +75,6 @@ export function StayForm({
       lng: toNumber(draft.lng),
       start_date: draft.start_date,
       end_date: draft.end_date,
-      cost: toNumber(draft.cost),
     }
   }
 
@@ -74,12 +83,24 @@ export function StayForm({
     setBusy(true)
     try {
       if (isNew) {
-        await mutations.createStay({
+        const newStayId = await mutations.createStay({
           ...(buildPatch() as { location_name: string; start_date: string; end_date: string } & StayPatch),
           booked: draft.booked,
-          booked_by: draft.booked ? draft.booked_by || null : null,
-          paid_back: draft.booked && draft.booked_by ? draft.paid_back : false,
         })
+        const cost = toNumber(draft.cost)
+        if (newStayId && cost && cost > 0 && draft.costPaidBy) {
+          const participantIds = members.map((m) => m.id)
+          await mutations.createExpense({
+            title: draft.location_name.trim(),
+            category_id: verblijfCategoryId,
+            amount: cost,
+            expense_date: draft.start_date,
+            paid_by: draft.costPaidBy,
+            split_type: 'equal',
+            stay_id: newStayId,
+            shares: computeEqualShares(cost, participantIds),
+          })
+        }
       } else {
         await mutations.updateStay(stay.id, buildPatch())
       }
@@ -172,151 +193,76 @@ export function StayForm({
           )}
 
           <div>
-            <label htmlFor="stay-cost" className="field-label">
-              Totale kosten (€)
-            </label>
-            <input
-              id="stay-cost"
-              inputMode="decimal"
-              className="field-input font-mono text-[14px]"
-              value={draft.cost}
-              onChange={(e) => set({ cost: e.target.value })}
-            />
+            <span className="field-label">Kosten</span>
+            {isNew ? (
+              <div className="flex flex-col gap-3">
+                <input
+                  id="stay-cost"
+                  inputMode="decimal"
+                  className="field-input font-mono text-[14px]"
+                  placeholder="Totale kosten (€, optioneel)"
+                  value={draft.cost}
+                  onChange={(e) => set({ cost: e.target.value })}
+                />
+                {toNumber(draft.cost) !== null && (toNumber(draft.cost) as number) > 0 && (
+                  <select
+                    className="field-input"
+                    value={draft.costPaidBy}
+                    onChange={(e) => set({ costPaidBy: e.target.value })}
+                  >
+                    <option value="">Betaald door...</option>
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.display_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            ) : linkedExpense ? (
+              <div className="border-[1.5px] border-edge bg-[rgba(42,36,32,0.03)] px-3 py-2.5">
+                <p className="font-mono text-[14px] font-bold text-ink">
+                  {formatEuro(linkedExpense.amount)}
+                </p>
+                <p className="mt-0.5 font-mono text-[11px] text-muted">
+                  Betaald door {members.find((m) => m.id === linkedExpense.paid_by)?.display_name ?? 'onbekend'}{' '}
+                  · {linkedExpense.shares.length}{' '}
+                  {linkedExpense.shares.length === 1 ? 'deelnemer' : 'deelnemers'}
+                </p>
+                <button
+                  type="button"
+                  className="mt-2 font-mono text-[12px] text-diesel underline hover:text-canyon"
+                  onClick={() => setCostFormOpen(true)}
+                >
+                  Kosten bewerken
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="btn-outline w-full" onClick={() => setCostFormOpen(true)}>
+                + Kosten toevoegen
+              </button>
+            )}
           </div>
 
-          {isNew ? (
-            <div>
-              <label className="flex cursor-pointer items-center gap-2.5">
-                <input
-                  type="checkbox"
-                  className="accent-(--color-canyon)"
-                  checked={draft.booked}
-                  onChange={(e) =>
-                    set(
-                      e.target.checked
-                        ? { booked: true }
-                        : { booked: false, booked_by: '', paid_back: false },
-                    )
+          <div>
+            <label className="flex cursor-pointer items-center gap-2.5">
+              <input
+                type="checkbox"
+                className="accent-(--color-canyon)"
+                checked={isNew ? draft.booked : stay.booked}
+                onChange={(e) => {
+                  if (isNew) {
+                    set({ booked: e.target.checked })
+                  } else {
+                    void mutations.updateStay(stay.id, { booked: e.target.checked })
                   }
-                />
-                <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
-                  Geboekt
-                </span>
-              </label>
-
-              {draft.booked && (
-                <div className="mt-3 flex flex-col gap-3 border-l-[1.5px] border-edge pl-3">
-                  <div>
-                    <label htmlFor="stay-booked-by" className="field-label">
-                      Geboekt door
-                    </label>
-                    <select
-                      id="stay-booked-by"
-                      className="field-input"
-                      value={draft.booked_by}
-                      onChange={(e) =>
-                        set({
-                          booked_by: e.target.value,
-                          ...(e.target.value ? {} : { paid_back: false }),
-                        })
-                      }
-                    >
-                      <option value="">Kies wie...</option>
-                      {members.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.display_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <label
-                    className={`flex items-center gap-2.5 ${
-                      draft.booked_by ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-(--color-sage)"
-                      checked={draft.paid_back}
-                      disabled={!draft.booked_by}
-                      onChange={(e) => set({ paid_back: e.target.checked })}
-                    />
-                    <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
-                      Terugbetaald (Tikkie ontvangen)
-                    </span>
-                  </label>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <label className="flex cursor-pointer items-center gap-2.5">
-                <input
-                  type="checkbox"
-                  className="accent-(--color-canyon)"
-                  checked={stay.booked}
-                  onChange={(e) => {
-                    const checked = e.target.checked
-                    void mutations.updateStay(
-                      stay.id,
-                      checked
-                        ? { booked: true }
-                        : { booked: false, booked_by: null, paid_back: false },
-                    )
-                  }}
-                />
-                <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
-                  Geboekt
-                </span>
-              </label>
-
-              {stay.booked && (
-                <div className="mt-3 flex flex-col gap-3 border-l-[1.5px] border-edge pl-3">
-                  <div>
-                    <label htmlFor="stay-booked-by" className="field-label">
-                      Geboekt door
-                    </label>
-                    <select
-                      id="stay-booked-by"
-                      className="field-input"
-                      value={stay.booked_by ?? ''}
-                      onChange={(e) =>
-                        void mutations.updateStay(stay.id, {
-                          booked_by: e.target.value || null,
-                          ...(e.target.value ? {} : { paid_back: false }),
-                        })
-                      }
-                    >
-                      <option value="">Kies wie...</option>
-                      {members.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.display_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <label
-                    className={`flex items-center gap-2.5 ${
-                      stay.booked_by ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-(--color-sage)"
-                      checked={stay.paid_back}
-                      disabled={!stay.booked_by}
-                      onChange={(e) => void mutations.updateStay(stay.id, { paid_back: e.target.checked })}
-                    />
-                    <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
-                      Terugbetaald (Tikkie ontvangen)
-                    </span>
-                  </label>
-                </div>
-              )}
-            </div>
-          )}
+                }}
+              />
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                Geboekt
+              </span>
+            </label>
+          </div>
 
           <button
             type="button"
@@ -341,6 +287,28 @@ export function StayForm({
           )}
         </div>
       </div>
+
+      {costFormOpen && stay && (
+        <ExpenseForm
+          expense={linkedExpense}
+          members={members}
+          categories={categories}
+          stays={[stay]}
+          mutations={mutations}
+          lockedStay={stay}
+          prefill={
+            linkedExpense
+              ? undefined
+              : {
+                  title: stay.location_name,
+                  expense_date: stay.start_date,
+                  category_id: verblijfCategoryId,
+                  stay_id: stay.id,
+                }
+          }
+          onClose={() => setCostFormOpen(false)}
+        />
+      )}
     </div>
   )
 }
