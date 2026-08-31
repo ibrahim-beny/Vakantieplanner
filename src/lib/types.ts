@@ -83,6 +83,10 @@ export interface Expense {
   notes: string | null
   updated_by: string | null
   updated_at: string
+  /** Aanmaakmoment, onveranderlijk — gebruikt om te bepalen of een kostenpost
+   * al bestond vóór de laatste afrekening tussen twee personen (zie
+   * computeSettlementItems in settlement.ts). */
+  created_at: string
   shares: ExpenseShareRow[]
 }
 
@@ -109,6 +113,9 @@ export interface SettlementPayment {
   to_profile: string
   amount: number
   paid_at: string // YYYY-MM-DD
+  /** Aanmaakmoment — gebruikt om te bepalen welke kostenposten al gedekt
+   * waren door deze afrekening (zie computeSettlementItems in settlement.ts). */
+  created_at: string
 }
 
 /**

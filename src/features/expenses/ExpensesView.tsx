@@ -61,7 +61,7 @@ export function ExpensesView({
   }, [expenses, categoryFilter])
 
   async function markAsPaid(from: string, to: string, amount: number) {
-    const items = computeSettlementItems(expenses, categories, from, to)
+    const items = computeSettlementItems(expenses, categories, settlementPayments, from, to)
     await mutations.recordSettlementPayment({
       from_profile: from,
       to_profile: to,

@@ -261,6 +261,7 @@ export const mockApi: TripApi = {
       notes: null,
       updated_by: null,
       updated_at: '',
+      created_at: new Date().toISOString(),
       ...rest,
       shares: shares.map((s) => ({ ...s, reminder_paid: false })),
     }
@@ -319,6 +320,7 @@ export const mockApi: TripApi = {
     const payment: SettlementPayment = {
       id: newId('payment'),
       trip_id: TRIP_ID,
+      created_at: new Date().toISOString(),
       ...rest,
     }
     settlementPayments.push(payment)

@@ -121,21 +121,39 @@ export interface SettlementItemDraft {
 
 /**
  * Bepaalt welke kostenposten meetellen als "van" en "naar" hun onderlinge
- * saldo afrekenen: alle nog niet als terugbetaald afgevinkte aandelen op
- * elkaars kostenposten, in beide richtingen (het bedrag van de afrekening
- * is immers al het verschil daartussen). Wordt gebruikt om bij "Markeer als
- * betaald" zowel de reminder_paid-vinkjes mee te zetten als de bon te
- * vullen (settlement_payment_items).
+ * saldo afrekenen: alle nog niet afgevinkte aandelen op elkaars
+ * kostenposten, in beide richtingen — maar alleen kostenposten die zijn
+ * aangemaakt ná de laatste eerdere afrekening tussen dit paar. Een eerdere
+ * afrekening zet immers altijd het hele toenmalige saldo tussen die twee
+ * personen op nul (zie computeDirectSettlements), dus alles wat toen al
+ * bestond is daar al door gedekt — ook als dat destijds (bijv. vóór deze
+ * bon-koppeling bestond) geen reminder_paid-vinkjes heeft gezet. Zonder
+ * deze afkap zou een kleine correctie-afrekening onterecht de hele,
+ * nooit-afgevinkte geschiedenis in haar bon "claimen".
  */
 export function computeSettlementItems(
-  expenses: Pick<Expense, 'id' | 'title' | 'category_id' | 'expense_date' | 'paid_by' | 'shares'>[],
+  expenses: Pick<
+    Expense,
+    'id' | 'title' | 'category_id' | 'expense_date' | 'paid_by' | 'shares' | 'created_at'
+  >[],
   categories: Pick<ExpenseCategory, 'id' | 'name'>[],
+  payments: Pick<SettlementPayment, 'from_profile' | 'to_profile' | 'created_at'>[],
   from: string,
   to: string,
 ): SettlementItemDraft[] {
   const categoryName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? null
+
+  const lastSettledAt = payments
+    .filter(
+      (p) =>
+        (p.from_profile === from && p.to_profile === to) ||
+        (p.from_profile === to && p.to_profile === from),
+    )
+    .reduce((latest, p) => (p.created_at > latest ? p.created_at : latest), '')
+
   const items: SettlementItemDraft[] = []
   for (const exp of expenses) {
+    if (exp.created_at <= lastSettledAt) continue
     const debtor = exp.paid_by === to ? from : exp.paid_by === from ? to : null
     if (!debtor) continue
     const share = exp.shares.find((s) => s.profile_id === debtor && !s.reminder_paid)
