@@ -3,6 +3,7 @@ import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { formatDayMonth } from '../../lib/dates'
+import { cityLabel } from '../../lib/cityColors'
 import type { TripDay } from '../../lib/types'
 
 interface Stop {
@@ -32,9 +33,10 @@ function buildStops(days: TripDay[]): Stop[] {
 }
 
 function pinIcon(name: string, active: boolean) {
+  const label = cityLabel(name)
   return L.divIcon({
     className: '',
-    html: `<div class="map-pin${active ? ' map-pin--active' : ''}"><span class="map-pin-dot"></span><span class="map-pin-label">${name.replace(/</g, '&lt;')}</span></div>`,
+    html: `<div class="map-pin${active ? ' map-pin--active' : ''}"><span class="map-pin-dot"></span><span class="map-pin-label">${label.replace(/</g, '&lt;')}</span></div>`,
     iconSize: [150, 46],
     iconAnchor: [75, 9],
   })

@@ -31,6 +31,15 @@ function normalizeCity(raw: string): string {
     .replace(/\s+/g, ' ')
 }
 
+/**
+ * Korte weergavenaam voor een locatie: alleen het eerste onderdeel van een
+ * Nominatim-adres (bijv. "Barcelona" uit "Barcelona, Catalonië, Spanje"),
+ * met behoud van originele hoofdlettering.
+ */
+export function cityLabel(raw: string): string {
+  return raw.split(',')[0].trim()
+}
+
 /** Levenshtein-afstand, dependency-vrij. */
 function levenshtein(a: string, b: string): number {
   const dp: number[][] = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0))
